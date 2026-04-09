@@ -1,0 +1,4 @@
+var CACHE = 'qhse-cloud-v1';
+self.addEventListener('install', function(e){self.skipWaiting();e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(['/','index.html','manifest.json']).catch(function(){});}));});
+self.addEventListener('activate', function(e){e.waitUntil(caches.keys().then(function(k){return Promise.all(k.filter(function(x){return x!==CACHE;}).map(function(x){return caches.delete(x);}));}).then(function(){return self.clients.claim();}));});
+self.addEventListener('fetch', function(e){if(e.request.url.includes('supabase.co')||e.request.url.includes('anthropic.com'))return;e.respondWith(caches.match(e.request).then(function(c){return c||fetch(e.request).then(function(r){if(e.request.method==='GET'&&r.status===200){var cl=r.clone();caches.open(CACHE).then(function(ca){ca.put(e.request,cl);});}return r;}).catch(function(){return caches.match('/index.html');});}));});

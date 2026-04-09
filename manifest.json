@@ -1,0 +1,14 @@
+{
+  "name": "QHSE MEGA Cloud",
+  "short_name": "QHSE MEGA",
+  "description": "Système de Management QHSE Cloud - Données synchronisées entre tous vos appareils",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0d14",
+  "theme_color": "#4f6ef7",
+  "orientation": "any",
+  "lang": "fr",
+  "icons": [
+    {"src":"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%234f6ef7'/><path d='M96 20L36 48v48c0 44.4 30.72 85.92 72 96 41.28-10.08 72-51.6 72-96V48L96 20z' fill='white'/></svg>","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

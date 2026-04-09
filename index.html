@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>QHSE MEGA Cloud</title>
+<meta name="description" content="Système de Management QHSE Cloud - Données synchronisées"/>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#4f6ef7"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+body{background:#0b0d14;color:#e2e5f5;overflow:hidden}
+body.light{background:#f0f2fa;color:#1a1d2e}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:#2d3149;border-radius:3px}
+input,select,textarea,button{font-family:inherit;font-size:inherit;-webkit-appearance:none}
+button{cursor:pointer;border:none;background:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fi .3s ease}
+#splash{position:fixed;inset:0;background:#0b0d14;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px}
+.spn{width:38px;height:38px;border:3px solid #232640;border-top-color:#4f6ef7;border-radius:50%;animation:spin .8s linear infinite}
+/* SETUP BANNER */
+#setup-banner{display:none;position:fixed;inset:0;background:#0b0d14;z-index:9998;overflow-y:auto;padding:24px}
+.setup-box{max-width:600px;margin:0 auto;background:#131620;border:1px solid #232640;border-radius:16px;padding:28px}
+/* AUTH */
+#auth{display:none;min-height:100vh;align-items:center;justify-content:center;padding:16px;background:linear-gradient(135deg,#0b0d14,#141830)}
+#app{display:none;flex-direction:column;height:100vh}
+#topbar{height:50px;display:flex;align-items:center;padding:0 12px;gap:6px;flex-shrink:0;border-bottom:1px solid #232640;background:#131620;z-index:100}
+body.light #topbar{background:#fff;border-color:#e2e6f5}
+#ttl{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.tbtn{background:transparent;border:1px solid #232640;border-radius:7px;padding:5px 9px;color:#6b6f96;display:flex;align-items:center;gap:5px;font-size:12px;flex-shrink:0}
+body.light .tbtn{border-color:#e2e6f5}
+#gsw{display:none;flex:1;max-width:360px;position:relative}
+#gsinput{width:100%;padding:7px 10px 7px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;font-size:13px;box-sizing:border-box}
+body.light #gsinput{background:#f5f7ff;border-color:#e2e6f5;color:#1a1d2e}
+#gsico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none}
+#gsres{display:none;position:absolute;top:38px;left:0;right:0;background:#131620;border:1px solid #232640;border-radius:10px;max-height:320px;overflow-y:auto;z-index:2000;box-shadow:0 8px 32px #00000088}
+body.light #gsres{background:#fff;border-color:#e2e6f5}
+#syncbar{position:fixed;top:50px;left:0;right:0;height:3px;background:transparent;z-index:200}
+#syncprog{height:100%;width:0;background:linear-gradient(90deg,#4f6ef7,#7c5cf6);transition:width .3s ease}
+#wrap{display:flex;flex:1;overflow:hidden}
+aside{width:216px;background:#131620;border-right:1px solid #232640;display:flex;flex-direction:column;flex-shrink:0;transition:transform .25s ease;z-index:500}
+aside.off{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%)}
+aside.on{position:fixed;top:0;left:0;bottom:0;transform:translateX(0)}
+body.light aside{background:#fff;border-color:#e2e6f5}
+#ov{display:none;position:fixed;inset:0;background:#00000077;z-index:490}
+#ov.on{display:block}
+.logo{padding:13px;border-bottom:1px solid #232640;display:flex;align-items:center;gap:9px;flex-shrink:0}
+body.light .logo{border-color:#e2e6f5}
+.logoico{width:30px;height:30px;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+nav{flex:1;overflow-y:auto;padding:5px}
+.ng{font-size:9px;color:#6b6f96;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:9px 7px 3px}
+.ni{width:100%;padding:8px 9px;border-radius:7px;display:flex;align-items:center;gap:8px;color:#6b6f96;font-size:12px;cursor:pointer;margin-bottom:1px;background:transparent;text-align:left}
+.ni:hover{background:#ffffff0a}
+.ni.on{background:#4f6ef718;color:#4f6ef7;font-weight:700}
+.nfoot{padding:5px 5px 9px;border-top:1px solid #232640;flex-shrink:0}
+body.light .nfoot{border-color:#e2e6f5}
+#pg{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 13px 80px}
+.card{background:#131620;border:1px solid #232640;border-radius:14px;padding:16px}
+body.light .card{background:#fff;border-color:#e2e6f5}
+.card0{background:#131620;border:1px solid #232640;border-radius:14px;overflow:hidden}
+body.light .card0{background:#fff;border-color:#e2e6f5}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.gkpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;margin-bottom:14px}
+.gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:11px}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:8px;font-weight:600;padding:8px 14px;font-size:13px;cursor:pointer}
+.bp{background:linear-gradient(135deg,#4f6ef7,#7c5cf6);color:#fff;border:none}
+.bg0{background:transparent;color:#6b6f96;border:1px solid #232640}
+body.light .bg0{border-color:#e2e6f5}
+.bsm{padding:5px 10px;font-size:11px}
+.bdg{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:#6b6f96;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid #232640;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid #232640;color:#e2e5f5}
+body.light th{border-color:#e2e6f5;color:#6b7094}
+body.light td{border-color:#e2e6f5;color:#1a1d2e}
+tr:last-child td{border-bottom:none}
+.f{margin-bottom:11px}
+.f label{display:block;font-size:10px;font-weight:700;color:#6b6f96;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.f input,.f select,.f textarea{width:100%;background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:8px 10px;color:#e2e5f5;font-size:13px;box-sizing:border-box}
+body.light .f input,body.light .f select,body.light .f textarea{background:#f5f7ff;border-color:#e2e6f5;color:#1a1d2e}
+.f textarea{resize:vertical}
+.aok{background:#22c55e12;border:1px solid #22c55e30;border-radius:8px;padding:9px 13px;color:#22c55e;font-size:13px;margin-bottom:11px}
+.aerr{background:#ef444412;border:1px solid #ef444430;border-radius:8px;padding:9px 13px;color:#ef4444;font-size:13px;margin-bottom:11px}
+.aw{background:#ef444412;border:1px solid #ef444430;border-radius:9px;padding:9px 13px;color:#ef4444;font-size:13px;display:flex;align-items:center;gap:7px;margin-bottom:12px}
+.kpi{background:#131620;border:1px solid #232640;border-radius:12px;padding:12px 13px;position:relative;overflow:hidden;cursor:pointer}
+body.light .kpi{background:#fff;border-color:#e2e6f5}
+.mbg{display:none;position:fixed;inset:0;background:#00000099;z-index:3000;align-items:center;justify-content:center;padding:12px}
+.mbg.on{display:flex}
+.mbox{background:#131620;border:1px solid #232640;border-radius:16px;padding:20px;width:100%;max-width:600px;max-height:92vh;overflow-y:auto}
+body.light .mbox{background:#fff;border-color:#e2e6f5}
+.np{display:none;position:fixed;right:12px;top:56px;width:min(320px,calc(100vw - 24px));background:#131620;border:1px solid #232640;border-radius:12px;z-index:1000;box-shadow:0 12px 36px #000000aa}
+body.light .np{background:#fff;border-color:#e2e6f5}
+.np.on{display:block}
+.aipanel{display:none;position:fixed;right:12px;bottom:70px;width:min(355px,calc(100vw - 24px));height:460px;background:#131620;border:1px solid #232640;border-radius:18px;flex-direction:column;z-index:2000;box-shadow:0 20px 60px #000000aa}
+body.light .aipanel{background:#fff;border-color:#e2e6f5}
+.aipanel.on{display:flex}
+.aih{padding:11px 14px;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);border-radius:18px 18px 0 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.aim{flex:1;overflow-y:auto;padding:11px 12px;display:flex;flex-direction:column;gap:8px}
+.aimsg{padding:9px 12px;max-width:90%;font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;border-radius:14px}
+.aimsg.u{background:#4f6ef7;color:#fff;align-self:flex-end;border-radius:14px 14px 4px 14px}
+.aimsg.b{background:#1a1d2b;color:#e2e5f5;align-self:flex-start;border-radius:4px 14px 14px 14px}
+body.light .aimsg.b{background:#f5f7ff;color:#1a1d2e}
+.aiinr{padding:7px 11px 11px;border-top:1px solid #232640;display:flex;gap:7px;flex-shrink:0}
+.aiinr input{flex:1;background:#1a1d2b;border:1px solid #232640;border-radius:10px;padding:8px 11px;color:#e2e5f5}
+body.light .aiinr{border-color:#e2e6f5}
+body.light .aiinr input{background:#f5f7ff;border-color:#e2e6f5;color:#1a1d2e}
+.fab{position:fixed;bottom:14px;right:14px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);border:none;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px #4f6ef766;z-index:800}
+.sc{background:#1a1d2b;border:1px solid #232640;border-radius:10px;padding:13px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+body.light .sc{background:#f5f7ff;border-color:#e2e6f5}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9000;display:none;white-space:nowrap;box-shadow:0 4px 20px #00000044}
+#toast.e{background:#ef4444}
+.sh{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.st{display:flex;align-items:center;gap:9px}
+.st h1{font-size:18px;font-weight:800;margin:0}
+.st p{color:#6b6f96;font-size:12px;margin:0}
+.dz{border:2px dashed #232640;border-radius:14px;padding:40px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
+.dz.drag{border-color:#4f6ef7;background:#4f6ef708}
+.cloud-badge{display:inline-flex;align-items:center;gap:5px;background:#22c55e15;border:1px solid #22c55e30;border-radius:20px;padding:3px 10px;font-size:11px;color:#22c55e;font-weight:600}
+@media(min-width:768px){aside{position:relative!important;transform:none!important;display:flex!important}#ov{display:none!important}#wrap{display:flex;flex:1;overflow:hidden}#pg{flex:1}}
+@media(max-width:767px){.g2{grid-template-columns:1fr}.gkpi{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- SETUP BANNER - shown if Supabase not configured -->
+<div id="setup-banner">
+  <div class="setup-box">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="display:inline-flex;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);align-items:center;justify-content:center;margin-bottom:12px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg>
+      </div>
+      <h1 style="font-size:22px;font-weight:900;margin:0">Configuration initiale</h1>
+      <p style="color:#6b6f96;margin:6px 0 0;font-size:13px">Connectez QHSE MEGA à votre base de données Supabase</p>
+    </div>
+
+    <div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#4f6ef7">
+      <strong>Pourquoi Supabase?</strong><br/>
+      Vos données seront sur un serveur cloud. Vous pouvez vous connecter depuis n'importe quel appareil et retrouver toutes vos informations.
+      <br/><strong>Gratuit</strong> jusqu'a 500MB de données.
+    </div>
+
+    <div style="margin-bottom:20px">
+      <h3 style="font-size:14px;font-weight:700;margin:0 0 12px">Etape 1 — Créer votre projet Supabase</h3>
+      <ol style="font-size:13px;color:#6b6f96;padding-left:16px;line-height:1.8">
+        <li>Aller sur <a href="https://supabase.com" target="_blank" style="color:#4f6ef7">supabase.com</a> → <strong>Start your project</strong></li>
+        <li>Créer un compte gratuit (GitHub ou email)</li>
+        <li>Cliquer <strong>New project</strong> → donner un nom (ex: "qhse-mega")</li>
+        <li>Choisir <strong>West EU</strong> ou <strong>Singapore</strong> (plus proche de la CI)</li>
+        <li>Définir un mot de passe de base de données → <strong>Create new project</strong></li>
+        <li>Attendre 2 minutes que le projet se crée</li>
+      </ol>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <h3 style="font-size:14px;font-weight:700;margin:0 0 12px">Etape 2 — Créer les tables (coller le SQL)</h3>
+      <p style="font-size:13px;color:#6b6f96;margin-bottom:8px">Dans Supabase → <strong>SQL Editor</strong> → <strong>New query</strong> → coller ce code → <strong>Run</strong>:</p>
+      <div style="background:#0b0d14;border:1px solid #232640;border-radius:8px;padding:12px;position:relative">
+        <button onclick="copySQL()" style="position:absolute;top:8px;right:8px;background:#4f6ef7;border:none;border-radius:6px;padding:4px 10px;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Copier</button>
+        <pre id="sql-block" style="font-size:11px;color:#22c55e;overflow-x:auto;white-space:pre;font-family:monospace;margin:0;padding-right:60px">-- Activer UUID
+create extension if not exists "uuid-ossp";
+
+-- Profils utilisateurs
+create table profiles (
+  id uuid references auth.users primary key,
+  name text,
+  company text,
+  phone text,
+  created_at timestamptz default now()
+);
+
+-- Sites
+create table sites (
+  id bigserial primary key,
+  user_id uuid references auth.users not null,
+  name text not null,
+  city text,
+  country text default 'Cote d Ivoire',
+  address text,
+  type text,
+  created_at timestamptz default now()
+);
+
+-- Enregistrements (tous modules)
+create table records (
+  id bigserial primary key,
+  user_id uuid references auth.users not null,
+  module text not null,
+  ref text,
+  data jsonb not null default '{}',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Documents PDF
+create table docs (
+  id bigserial primary key,
+  user_id uuid references auth.users not null,
+  name text,
+  ext text,
+  size text,
+  date text,
+  data text,
+  created_at timestamptz default now()
+);
+
+-- Securite: chaque utilisateur ne voit que ses donnees
+alter table profiles enable row level security;
+alter table sites enable row level security;
+alter table records enable row level security;
+alter table docs enable row level security;
+
+create policy "users_own_profiles" on profiles for all using (auth.uid() = id);
+create policy "users_own_sites" on sites for all using (auth.uid() = user_id);
+create policy "users_own_records" on records for all using (auth.uid() = user_id);
+create policy "users_own_docs" on docs for all using (auth.uid() = user_id);
+
+-- Auto-creer profil a l inscription
+create or replace function handle_new_user()
+returns trigger as $$
+begin
+  insert into profiles (id, name, company)
+  values (new.id, new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'company');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure handle_new_user();</pre>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <h3 style="font-size:14px;font-weight:700;margin:0 0 12px">Etape 3 — Récupérer vos clés API</h3>
+      <p style="font-size:13px;color:#6b6f96;margin-bottom:8px">Dans Supabase → <strong>Settings</strong> → <strong>API</strong>:</p>
+      <div class="f"><label>URL du projet (Project URL)</label><input id="sb-url" type="url" placeholder="https://xxxxxxxxxxxxxxxx.supabase.co"/></div>
+      <div class="f"><label>Clé publique (anon / public key)</label><input id="sb-key" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."/></div>
+    </div>
+
+    <div id="setup-msg" style="display:none;margin-bottom:12px"></div>
+    <button onclick="saveConfig()" class="btn bp" style="width:100%;justify-content:center;font-size:14px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+      Connecter QHSE MEGA à Supabase
+    </button>
+    <p style="font-size:11px;color:#6b6f96;text-align:center;margin-top:10px">Ces clés sont sauvegardées dans votre navigateur uniquement</p>
+  </div>
+</div>
+
+<div id="splash"><div class="spn"></div><p style="color:#6b6f96;font-size:13px">QHSE MEGA Cloud...</p></div>
+<div id="toast"></div>
+
+<!-- AUTH -->
+<div id="auth">
+<div style="width:100%;max-width:420px">
+  <div style="text-align:center;margin-bottom:22px">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);margin-bottom:12px">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+    </div>
+    <h1 style="font-size:26px;font-weight:900;margin:0">QHSE MEGA</h1>
+    <p style="color:#6b6f96;margin:3px 0 0;font-size:13px">Système de Management QHSE Cloud</p>
+    <div class="cloud-badge" style="margin-top:8px">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
+      Données sur serveur cloud
+    </div>
+  </div>
+  <div style="display:flex;background:#131620;border:1px solid #232640;border-radius:12px;padding:3px;margin-bottom:16px">
+    <button id="tl" onclick="swTab(0)" style="flex:1;padding:9px;border-radius:9px;border:none;font-weight:700;font-size:13px;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);color:#fff;cursor:pointer">Connexion</button>
+    <button id="tr" onclick="swTab(1)" style="flex:1;padding:9px;border-radius:9px;border:none;font-weight:600;font-size:13px;background:transparent;color:#6b6f96;cursor:pointer">Créer un compte</button>
+  </div>
+  <div id="amsg" style="display:none;margin-bottom:12px"></div>
+  <div id="fl" style="background:#131620;border:1px solid #232640;border-radius:14px;padding:22px">
+    <div class="f"><label>Email</label><input id="le" type="email" placeholder="exemple@email.com"/></div>
+    <div class="f"><label>Mot de passe</label><input id="lp" type="password" onkeydown="if(event.key==='Enter')login()"/></div>
+    <button onclick="login()" class="btn bp" style="width:100%;justify-content:center;margin-top:4px">Se connecter &rarr;</button>
+    <button onclick="forgotPwd()" style="width:100%;text-align:center;color:#6b6f96;font-size:12px;margin-top:10px;background:none;border:none;cursor:pointer;font-family:inherit">Mot de passe oublié?</button>
+  </div>
+  <div id="fr" style="display:none;background:#131620;border:1px solid #232640;border-radius:14px;padding:22px">
+    <div class="g2">
+      <div class="f"><label>Nom complet *</label><input id="rn" type="text" placeholder="Ex: Kouadio Jean"/></div>
+      <div class="f"><label>Email *</label><input id="re" type="email" placeholder="votre@email.com"/></div>
+    </div>
+    <div class="f"><label>Entreprise</label><input id="rc" type="text" placeholder="Ex: QHSE Solutions CI"/></div>
+    <div class="g2">
+      <div class="f"><label>Mot de passe * (6 min)</label><input id="rp" type="password"/></div>
+      <div class="f"><label>Confirmer *</label><input id="rp2" type="password" onkeydown="if(event.key==='Enter')register()"/></div>
+    </div>
+    <button onclick="register()" class="btn bp" style="width:100%;justify-content:center;margin-top:4px">Créer mon compte &rarr;</button>
+    <p style="margin-top:10px;font-size:11px;color:#6b6f96;text-align:center">Vos données seront stockées sur le serveur Supabase</p>
+  </div>
+  <button onclick="showSetup()" style="width:100%;text-align:center;color:#6b6f96;font-size:11px;margin-top:14px;background:none;border:none;cursor:pointer;font-family:inherit">Reconfigurer la connexion Supabase</button>
+</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="syncbar"><div id="syncprog"></div></div>
+  <div id="topbar">
+    <button onclick="togSide()" class="tbtn" style="border:none;color:#6b6f96;padding:5px;flex-shrink:0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+    </button>
+    <span id="ttl">Tableau de bord</span>
+    <div id="gsw">
+      <svg id="gsico" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input id="gsinput" placeholder="Recherche globale..." oninput="doGS(this.value)" onkeydown="if(event.key==='Escape')togGS()"/>
+      <div id="gsres"></div>
+    </div>
+    <button onclick="togGS()" class="tbtn" title="Ctrl+K">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+    <button onclick="togTheme()" class="tbtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" id="thico"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/></svg>
+    </button>
+    <div style="position:relative">
+      <button onclick="togNotif()" class="tbtn" id="nbtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        <span id="ncnt" style="background:#ef4444;color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center">0</span>
+      </button>
+      <div class="np" id="npanel">
+        <div style="padding:9px 13px;border-bottom:1px solid #232640;font-weight:700;font-size:13px;display:flex;justify-content:space-between">
+          <span>Alertes</span>
+          <button onclick="togNotif()" style="color:#6b6f96;padding:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+        </div>
+        <div id="nlist" style="max-height:260px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <button onclick="togAI()" class="btn bp bsm">IA</button>
+    <div id="av" onclick="goto('profile')" style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0;cursor:pointer">?</div>
+  </div>
+  <div id="wrap">
+    <div id="ov" onclick="closeSide()"></div>
+    <aside id="side" class="off">
+      <div class="logo">
+        <div class="logoico"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg></div>
+        <div><p style="margin:0;font-weight:800;font-size:13px">QHSE MEGA</p><p id="sco" style="margin:0;font-size:9px;color:#22c55e">Cloud</p></div>
+      </div>
+      <nav id="nav"></nav>
+      <div class="nfoot">
+        <button class="ni" onclick="goto('profile')" style="width:100%">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          <span>Mon profil</span>
+        </button>
+        <button class="ni" onclick="doLogout()" style="color:#ef4444;width:100%">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+          <span>Déconnexion</span>
+        </button>
+      </div>
+    </aside>
+    <main id="pg"><div id="pc"></div></main>
+  </div>
+</div>
+
+<div class="aipanel" id="aip">
+  <div class="aih">
+    <div style="display:flex;align-items:center;gap:9px;color:#fff">
+      <p style="margin:0;font-weight:700;font-size:13px">Assistant IA QHSE</p>
+    </div>
+    <button onclick="togAI()" style="background:#ffffff22;border:none;border-radius:7px;padding:4px 7px;cursor:pointer;color:#fff">✕</button>
+  </div>
+  <div class="aim" id="aimsg"></div>
+  <div class="aiinr">
+    <input id="aiinp" placeholder="Votre question QHSE..." onkeydown="if(event.key==='Enter')aiSend()"/>
+    <button onclick="aiSend()" style="background:linear-gradient(135deg,#4f6ef7,#7c5cf6);border:none;border-radius:10px;padding:8px 12px;color:#fff;cursor:pointer">➤</button>
+  </div>
+</div>
+<button class="fab" id="fab" onclick="togAI()" style="display:none">🤖</button>
+
+<div class="mbg" id="mbg" onclick="if(event.target===this)closeMod()">
+  <div class="mbox">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h3 id="mtit" style="font-size:16px;font-weight:700;margin:0">Nouveau</h3>
+      <button onclick="closeMod()" style="color:#6b6f96;padding:4px">✕</button>
+    </div>
+    <div id="mmsg" style="display:none;margin-bottom:10px"></div>
+    <div id="mflds" class="g2"></div>
+    <div id="mbtns" style="display:flex;gap:9px;justify-content:flex-end;margin-top:10px">
+      <button onclick="closeMod()" class="btn bg0">Annuler</button>
+      <button id="msave" class="btn bp">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ================================================================
+// SUPABASE CONFIG (stored in localStorage)
+// ================================================================
+var CFG_KEY = "qhse_supabase_config";
+
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY)) || null; }
+  catch(e) { return null; }
+}
+function saveConfigLocal(url, key) {
+  localStorage.setItem(CFG_KEY, JSON.stringify({url: url.replace(/\/$/, ""), key: key}));
+}
+
+// ================================================================
+// SUPABASE CLIENT (minimal, no external lib needed)
+// ================================================================
+var SB = null; // Supabase config {url, key}
+var SB_SESSION = null; // current session
+
+function sbInit(url, key) {
+  SB = {url: url.replace(/\/$/, ""), key: key};
+}
+
+function sbHeaders(token) {
+  var h = {
+    "Content-Type": "application/json",
+    "apikey": SB.key,
+    "Authorization": "Bearer " + (token || SB.key)
+  };
+  return h;
+}
+
+async function sbAuth(endpoint, body) {
+  var r = await fetch(SB.url + "/auth/v1/" + endpoint, {
+    method: "POST",
+    headers: {"Content-Type": "application/json", "apikey": SB.key},
+    body: JSON.stringify(body)
+  });
+  return r.json();
+}
+
+async function sbFrom(table, method, body, params, token) {
+  var url = SB.url + "/rest/v1/" + table;
+  if (params) url += "?" + params;
+  var opts = {
+    method: method || "GET",
+    headers: sbHeaders(token || (SB_SESSION && SB_SESSION.access_token))
+  };
+  if (body) opts.body = JSON.stringify(body);
+  if (method === "GET" || !method) opts.headers["Accept"] = "application/json";
+  if (method === "POST") opts.headers["Prefer"] = "return=representation";
+  if (method === "PATCH") opts.headers["Prefer"] = "return=representation";
+  var r = await fetch(url, opts);
+  if (r.status === 204) return {data: null, error: null};
+  var data = await r.json();
+  if (!r.ok) return {data: null, error: data};
+  return {data: data, error: null};
+}
+
+// Token refresh
+async function sbRefreshSession() {
+  if (!SB_SESSION || !SB_SESSION.refresh_token) return false;
+  var r = await sbAuth("token?grant_type=refresh_token", {refresh_token: SB_SESSION.refresh_token});
+  if (r.access_token) {
+    SB_SESSION = r;
+    localStorage.setItem("qhse_session", JSON.stringify(r));
+    return true;
+  }
+  return false;
+}
+
+// ================================================================
+// DATA LAYER (all async, cloud-based)
+// ================================================================
+var cache = {}; // local cache for speed
+
+async function gRecs(mod) {
+  if (cache[mod]) return cache[mod];
+  var r = await sbFrom("records", "GET", null, "module=eq."+mod+"&user_id=eq."+SB_SESSION.user.id+"&order=created_at.desc", null);
+  if (r.error) { console.error(r.error); return []; }
+  var rows = (r.data || []).map(function(row) {
+    var d = row.data || {};
+    d.id = row.id; d.ref = row.ref; d.created_at = row.created_at;
+    return d;
+  });
+  cache[mod] = rows;
+  return rows;
+}
+
+async function sRec(mod, data, id) {
+  syncStart();
+  var row = {user_id: SB_SESSION.user.id, module: mod, data: data};
+  var r;
+  if (id) {
+    r = await sbFrom("records", "PATCH", row, "id=eq."+id);
+  } else {
+    // Generate ref
+    var existing = await gRecs(mod);
+    var pfx = mod.slice(0,3).toUpperCase();
+    var yr = new Date().getFullYear().toString().slice(-2);
+    var n = existing.length + 1;
+    row.ref = pfx + "-" + yr + "-" + String(n).padStart(3,"0");
+    row.data.created_at = new Date().toLocaleString("fr-FR");
+    r = await sbFrom("records", "POST", row, null);
+  }
+  cache[mod] = null; // invalidate cache
+  syncEnd();
+  if (r.error) { console.error(r.error); return {err: "Erreur sauvegarde"}; }
+  return {ok: 1};
+}
+
+async function dRec(id) {
+  syncStart();
+  await sbFrom("records", "DELETE", null, "id=eq."+id);
+  cache = {}; // clear all cache
+  syncEnd();
+}
+
+async function gSites() {
+  var r = await sbFrom("sites", "GET", null, "user_id=eq."+SB_SESSION.user.id+"&order=name.asc");
+  if (r.error) return [];
+  return r.data || [];
+}
+
+async function saveSite(s) {
+  syncStart();
+  var row = {user_id: SB_SESSION.user.id, name: s.name, city: s.city, country: s.country, address: s.address, type: s.type};
+  var r;
+  if (s.id && typeof s.id === "number" && s.id > 0) {
+    r = await sbFrom("sites", "PATCH", row, "id=eq."+s.id);
+  } else {
+    r = await sbFrom("sites", "POST", row, null);
+  }
+  S.sites = await gSites();
+  syncEnd();
+  return {ok: 1};
+}
+
+async function delSite(id) {
+  syncStart();
+  await sbFrom("sites", "DELETE", null, "id=eq."+id);
+  S.sites = await gSites();
+  syncEnd();
+}
+
+async function gDocs() {
+  var r = await sbFrom("docs", "GET", null, "user_id=eq."+SB_SESSION.user.id+"&order=created_at.desc&select=id,name,ext,size,date,created_at");
+  if (r.error) return [];
+  return r.data || [];
+}
+
+async function sDoc(doc) {
+  syncStart();
+  doc.user_id = SB_SESSION.user.id;
+  var r = await sbFrom("docs", "POST", doc, null);
+  syncEnd();
+  if (r.error) { toast("Fichier trop volumineux ou erreur", true); return null; }
+  return r.data && r.data[0] ? r.data[0].id : null;
+}
+
+async function dDoc(id) {
+  syncStart();
+  await sbFrom("docs", "DELETE", null, "id=eq."+id);
+  syncEnd();
+}
+
+async function downloadDoc(id) {
+  syncStart();
+  var r = await sbFrom("docs", "GET", null, "id=eq."+id+"&select=name,data");
+  syncEnd();
+  if (r.error || !r.data || !r.data[0]) { toast("Erreur telechargement", true); return; }
+  var doc = r.data[0];
+  var a = document.createElement("a"); a.href = doc.data; a.download = doc.name; a.click();
+  toast("Telechargement: " + doc.name);
+}
+
+// ================================================================
+// SYNC PROGRESS BAR
+// ================================================================
+var syncCount = 0;
+function syncStart() { syncCount++; var p = document.getElementById("syncprog"); if(p){p.style.width="60%";} }
+function syncEnd() { syncCount = Math.max(0, syncCount-1); var p = document.getElementById("syncprog"); if(p) p.style.width = syncCount > 0 ? "80%" : "0"; }
+
+// ================================================================
+// STATE
+// ================================================================
+var S = {user:null, pg:"dashboard", search:"", dark:true, aiOpen:false, aiMsgs:[], aiLoad:false, notif:false, mkey:null, eid:null, sites:[], gsOpen:false};
+
+// ================================================================
+// UTILS
+// ================================================================
+var BC = {OPEN:"#ef4444",CLOSED:"#22c55e","IN PROGRESS":"#f59e0b",CRITICAL:"#dc2626",HIGH:"#ea580c",MEDIUM:"#d97706",LOW:"#16a34a",PLANNED:"#3b82f6",COMPLETED:"#22c55e",OVERDUE:"#ef4444",ACTIVE:"#22c55e",INACTIVE:"#6b7280",PENDING:"#f59e0b",VALIDE:"#22c55e",EXPIRE:"#ef4444","A RENOUVELER":"#f59e0b",OK:"#22c55e","NON CONFORME":"#ef4444",PARTIEL:"#f59e0b"};
+function bdg(s) { var c=BC[String(s)]||"#6b7280"; return '<span class="bdg" style="background:'+c+'22;color:'+c+';border:1px solid '+c+'44">'+xe(s)+"</span>"; }
+function dl(d) { if(!d) return null; return Math.ceil((new Date(d)-new Date())/86400000); }
+function ebdg(d) {
+  var n=dl(d); if(n===null) return '<span style="color:#6b6f96">--</span>';
+  var c=n<0?"#ef4444":n<=30?"#f59e0b":n<=90?"#3b82f6":"#22c55e";
+  return '<span class="bdg" style="background:'+c+'22;color:'+c+';border:1px solid '+c+'44">'+(n<0?"EXPIRE":n+"j")+"</span>";
+}
+function xe(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function toast(m,e) { var t=document.getElementById("toast"); t.textContent=m; t.className=e?"e":""; t.style.display="block"; setTimeout(function(){t.style.display="none";},2500); }
+function siteOpts() { return S.sites.map(function(s){return s.name+(s.city?" ("+s.city+")":"");}); }
+function empOpts() { return (cache["employees"]||[]).map(function(e){return e.fullName||"";}); }
+function put(h) { document.getElementById("pc").innerHTML = h; }
+
+// ================================================================
+// MODULES CONFIG (same as local version)
+// ================================================================
+var M = {
+incidents:{l:"Incidents",i:"incidents",
+  c:[{k:"ref",l:"Ref."},{k:"title",l:"Titre"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"severity",l:"Gravite",b:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"title",l:"Titre de l incident"},{k:"site",l:"Site",o:siteOpts()},{k:"date",l:"Date",t:"date"},{k:"type",l:"Type",o:["Accident avec arret","Accident sans arret","Presqu accident","Incident env.","Maladie professionnelle"]},{k:"severity",l:"Gravite",o:["CRITICAL","HIGH","MEDIUM","LOW"]},{k:"status",l:"Statut",o:["OPEN","IN PROGRESS","CLOSED"]},{k:"injured",l:"Personne(s) concernee(s)"},{k:"lostDays",l:"Jours perdus",t:"number"},{k:"location",l:"Lieu precis"},{k:"description",l:"Description",ta:true},{k:"causes",l:"Causes",ta:true},{k:"actions",l:"Actions immediates",ta:true}];}},
+audits:{l:"Audits",i:"audits",
+  c:[{k:"ref",l:"Ref."},{k:"title",l:"Titre"},{k:"type",l:"Type"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"score",l:"Score"},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"title",l:"Titre"},{k:"type",l:"Type",o:["Interne","Externe","Fournisseur","Certification","Reglementaire"]},{k:"site",l:"Site",o:siteOpts()},{k:"referential",l:"Referentiel",o:["ISO 45001","ISO 14001","ISO 9001","Code du Travail CI","Interne"]},{k:"auditor",l:"Auditeur"},{k:"date",l:"Date",t:"date"},{k:"score",l:"Score (%)"},{k:"status",l:"Statut",o:["PLANNED","IN PROGRESS","COMPLETED"]},{k:"findings",l:"Constats",ta:true},{k:"strengths",l:"Points forts",ta:true},{k:"recommendations",l:"Recommandations",ta:true}];}},
+risks:{l:"Risques / DUER",i:"risks",
+  c:[{k:"ref",l:"Ref."},{k:"hazard",l:"Danger"},{k:"site",l:"Site"},{k:"probability",l:"P"},{k:"gravity",l:"G"},{k:"level",l:"Niveau",b:true},{k:"residualRisk",l:"Residuel",b:true}],
+  f:function(){return[{k:"hazard",l:"Danger"},{k:"situation",l:"Situation dangereuse"},{k:"unit",l:"Unite/Poste"},{k:"site",l:"Site",o:siteOpts()},{k:"type",l:"Type",o:["Chute de hauteur","Chute de plain-pied","Manutention","Chimique","Electrique","TMS","Bruit","Chaleur","Incendie","Biologique","Routier","Autre"]},{k:"probability",l:"Probabilite (1-5)",t:"number"},{k:"gravity",l:"Gravite (1-5)",t:"number"},{k:"level",l:"Niveau",o:["CRITICAL","HIGH","MEDIUM","LOW"]},{k:"controls",l:"Mesures existantes",ta:true},{k:"newMeasures",l:"Nouvelles mesures",ta:true},{k:"responsible",l:"Responsable"},{k:"deadline",l:"Delai",t:"date"},{k:"residualRisk",l:"Risque residuel",o:["CRITICAL","HIGH","MEDIUM","LOW"]}];}},
+nc:{l:"Non-Conformites",i:"nc",
+  c:[{k:"ref",l:"Ref."},{k:"description",l:"Description"},{k:"source",l:"Source"},{k:"site",l:"Site"},{k:"type",l:"Type"},{k:"responsible",l:"Responsable"},{k:"dueDate",l:"Echeance"},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"description",l:"Description",ta:true},{k:"source",l:"Source",o:["Audit interne","Audit externe","Client","Inspection","Controle interne","Incident","Observation","Plainte"]},{k:"site",l:"Site",o:siteOpts()},{k:"type",l:"Type",o:["Majeure","Mineure","Observation"]},{k:"responsible",l:"Responsable"},{k:"dueDate",l:"Echeance",t:"date"},{k:"status",l:"Statut",o:["OPEN","IN PROGRESS","CLOSED"]},{k:"correction",l:"Correction immediate",ta:true},{k:"correctiveAction",l:"Action corrective",ta:true}];}},
+actions:{l:"Plan d Actions",i:"actions",
+  c:[{k:"ref",l:"Ref."},{k:"title",l:"Action"},{k:"type",l:"Type"},{k:"responsible",l:"Responsable"},{k:"dueDate",l:"Echeance"},{k:"priority",l:"Priorite",b:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"title",l:"Intitule"},{k:"type",l:"Type",o:["Corrective","Preventive","Amelioration","Reglementaire","Securite"]},{k:"origin",l:"Origine",o:["Incident","Audit","NC","Risque","Direction","Reglementation","Client"]},{k:"site",l:"Site",o:siteOpts()},{k:"responsible",l:"Responsable"},{k:"supervisor",l:"Superviseur"},{k:"dueDate",l:"Echeance",t:"date"},{k:"priority",l:"Priorite",o:["CRITICAL","HIGH","MEDIUM","LOW"]},{k:"status",l:"Statut",o:["PLANNED","IN PROGRESS","COMPLETED","OVERDUE","CANCELLED"]},{k:"progress",l:"Avancement (%)",t:"number"},{k:"description",l:"Description",ta:true},{k:"result",l:"Resultat",ta:true}];}},
+environment:{l:"Environnement",i:"environment",
+  c:[{k:"ref",l:"Ref."},{k:"indicator",l:"Indicateur"},{k:"type",l:"Type"},{k:"site",l:"Site"},{k:"period",l:"Periode"},{k:"value",l:"Valeur"},{k:"unit",l:"Unite"},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"indicator",l:"Indicateur"},{k:"type",l:"Type",o:["Energie electrique","Eau","Dechets dangereux","Dechets non dangereux","CO2","Bruit","Effluents","Sols","Air"]},{k:"site",l:"Site",o:siteOpts()},{k:"period",l:"Periode"},{k:"value",l:"Valeur",t:"number"},{k:"unit",l:"Unite (kWh, m3, kg...)"},{k:"target",l:"Objectif"},{k:"baseValue",l:"Reference N-1"},{k:"status",l:"Statut",o:["ACTIVE","INACTIVE"]},{k:"notes",l:"Notes",ta:true}];}},
+training:{l:"Formations",i:"training",
+  c:[{k:"ref",l:"Ref."},{k:"title",l:"Formation"},{k:"type",l:"Type"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"participants",l:"Nb"},{k:"nextRenewal",l:"Renouvellement",e:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"title",l:"Intitule"},{k:"type",l:"Type",o:["SST/Secourisme","CACES","Habilitation elec.","Travail en hauteur","Incendie","Chimie","Conduite engins","Management QHSE","ISO 45001/14001","Code Travail CI","Autre"]},{k:"site",l:"Site",o:siteOpts()},{k:"trainer",l:"Formateur"},{k:"date",l:"Date",t:"date"},{k:"duration",l:"Duree (h)",t:"number"},{k:"participants",l:"Nb participants",t:"number"},{k:"participantsList",l:"Liste participants",ta:true},{k:"validityYears",l:"Validite (annees)",t:"number"},{k:"nextRenewal",l:"Renouvellement",t:"date"},{k:"status",l:"Statut",o:["PLANNED","IN PROGRESS","COMPLETED"]},{k:"evaluation",l:"Evaluation",ta:true}];}},
+documents:{l:"Documents",i:"documents",
+  c:[{k:"ref",l:"Ref."},{k:"title",l:"Titre"},{k:"type",l:"Type"},{k:"version",l:"Version"},{k:"author",l:"Auteur"},{k:"revision",l:"Revision"},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"ref",l:"Reference"},{k:"title",l:"Titre"},{k:"type",l:"Type",o:["Politique QHSE","Procedure","Instruction","Mode operatoire","Formulaire","Enregistrement","Plan urgence","Rapport","Norme","Reglementation"]},{k:"version",l:"Version"},{k:"author",l:"Auteur"},{k:"approver",l:"Approbateur"},{k:"revision",l:"Date revision",t:"date"},{k:"nextRevision",l:"Prochaine revision",t:"date"},{k:"status",l:"Statut",o:["ACTIVE","PENDING","INACTIVE","OBSOLETE"]},{k:"description",l:"Description",ta:true}];}},
+ppe:{l:"EPI et Equipements",i:"ppe",
+  c:[{k:"ref",l:"Ref."},{k:"type",l:"Type EPI"},{k:"standard",l:"Norme"},{k:"site",l:"Site"},{k:"quantity",l:"Stock"},{k:"assignedTo",l:"Attribue a"},{k:"expiry",l:"Expiration",e:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"type",l:"Type d EPI"},{k:"standard",l:"Norme"},{k:"site",l:"Site",o:siteOpts()},{k:"quantity",l:"Quantite en stock",t:"number"},{k:"supplier",l:"Fournisseur"},{k:"purchaseDate",l:"Date achat",t:"date"},{k:"expiry",l:"Date expiration",t:"date"},{k:"renewalAlert",l:"Alerte (jours avant)",t:"number"},{k:"assignedTo",l:"Attribue a",o:empOpts()},{k:"status",l:"Statut",o:["VALIDE","A RENOUVELER","EXPIRE"]},{k:"notes",l:"Notes",ta:true}];}},
+fire:{l:"Securite Incendie",i:"fire",
+  c:[{k:"ref",l:"Ref."},{k:"type",l:"Type"},{k:"location",l:"Emplacement"},{k:"site",l:"Site"},{k:"lastCheck",l:"Derniere verif."},{k:"nextCheck",l:"Prochaine verif.",e:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"ref",l:"Reference"},{k:"type",l:"Type",o:["Extincteur CO2 2kg","Extincteur CO2 5kg","Extincteur Poudre 6kg","Extincteur Poudre 9kg","Extincteur Eau 9L","RIA","Detecteur fumee","Alarme","Porte coupe-feu","Autre"]},{k:"location",l:"Emplacement"},{k:"site",l:"Site",o:siteOpts()},{k:"lastCheck",l:"Derniere verification",t:"date"},{k:"nextCheck",l:"Prochaine verification",t:"date"},{k:"technician",l:"Technicien"},{k:"status",l:"Statut",o:["OK","NON CONFORME","PARTIEL","EN ATTENTE"]},{k:"notes",l:"Notes",ta:true}];}},
+vehicles:{l:"Vehicules et Conducteurs",i:"vehicle",
+  c:[{k:"ref",l:"Ref."},{k:"plate",l:"Immatriculation"},{k:"model",l:"Vehicule"},{k:"driver",l:"Conducteur"},{k:"site",l:"Site"},{k:"licenseExpiry",l:"Permis",e:true},{k:"insuranceExpiry",l:"Assurance",e:true},{k:"technicalExpiry",l:"Visite tech.",e:true},{k:"oilChangeExpiry",l:"Vidange",e:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"plate",l:"N Immatriculation"},{k:"model",l:"Marque et modele"},{k:"year",l:"Annee"},{k:"fuel",l:"Carburant",o:["Essence","Diesel","Electrique","Hybride","GPL"]},{k:"driver",l:"Conducteur",o:empOpts()},{k:"site",l:"Site",o:siteOpts()},{k:"mileage",l:"Kilometrage",t:"number"},{k:"licenseExpiry",l:"Expiry Permis",t:"date"},{k:"licenseCategory",l:"Categorie permis"},{k:"insuranceExpiry",l:"Expiry Assurance",t:"date"},{k:"insuranceCompany",l:"Assureur"},{k:"transportCardExpiry",l:"Expiry Carte transport",t:"date"},{k:"parkingCardExpiry",l:"Expiry Stationnement",t:"date"},{k:"technicalExpiry",l:"Expiry Visite technique",t:"date"},{k:"oilChangeExpiry",l:"Expiry Vidange",t:"date"},{k:"status",l:"Statut",o:["ACTIVE","EN PANNE","MAINTENANCE","IMMOBILISE","CEDE"]},{k:"notes",l:"Notes",ta:true}];}},
+employees:{l:"Employes",i:"employee",
+  c:[{k:"ref",l:"Ref."},{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site"},{k:"bloodGroup",l:"Gr. sanguin"},{k:"nextMedical",l:"Prochaine visite",e:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site",o:siteOpts()},{k:"phone",l:"Telephone"},{k:"email",l:"Email",t:"email"},{k:"hireDate",l:"Date embauche",t:"date"},{k:"contractType",l:"Contrat",o:["CDI","CDD","Interimaire","Stagiaire","Sous-traitant"]},{k:"emergencyContact",l:"Contact urgence"},{k:"emergencyPhone",l:"Tel urgence"},{k:"bloodGroup",l:"Groupe sanguin",o:["A+","A-","B+","B-","AB+","AB-","O+","O-"]},{k:"lastMedical",l:"Derniere visite medicale",t:"date"},{k:"nextMedical",l:"Prochaine visite",t:"date"},{k:"medicalAlert",l:"Alerte visite (jours avant)",t:"number"},{k:"medicalRestrictions",l:"Restrictions"},{k:"assignedPPE",l:"EPI attribues (refs)",ta:true},{k:"formationsList",l:"Formations",ta:true},{k:"status",l:"Statut",o:["ACTIVE","INACTIVE","EN CONGE","EN FORMATION","SUSPENDU"]},{k:"notes",l:"Notes",ta:true}];}},
+meetings:{l:"Reunions Securite",i:"meeting",
+  c:[{k:"ref",l:"Ref."},{k:"title",l:"Titre"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"chairman",l:"Animateur"},{k:"attendeesCount",l:"Participants"},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"title",l:"Titre"},{k:"site",l:"Site",o:siteOpts()},{k:"date",l:"Date",t:"date"},{k:"time",l:"Heure",t:"time"},{k:"duration",l:"Duree (min)",t:"number"},{k:"chairman",l:"Animateur",o:empOpts()},{k:"location",l:"Lieu"},{k:"attendeesCount",l:"Nb participants",t:"number"},{k:"attendeesList",l:"Liste participants",ta:true},{k:"topics",l:"Sujets abordes",ta:true},{k:"decisions",l:"Decisions et actions",ta:true},{k:"nextMeeting",l:"Prochaine reunion",t:"date"},{k:"status",l:"Statut",o:["PLANNED","COMPLETED","CANCELLED"]}];}},
+};
+
+var NAV = [
+  {k:"dashboard",l:"Tableau de bord",i:"dashboard"},
+  {k:"incidents",l:"Incidents",i:"incidents",g:"Securite"},
+  {k:"audits",l:"Audits",i:"audits",g:"Securite"},
+  {k:"risks",l:"Risques / DUER",i:"risks",g:"Securite"},
+  {k:"ppe",l:"EPI et Equipements",i:"ppe",g:"Securite"},
+  {k:"fire",l:"Securite Incendie",i:"fire",g:"Securite"},
+  {k:"vehicles",l:"Vehicules",i:"vehicle",g:"Securite"},
+  {k:"meetings",l:"Reunions Securite",i:"meeting",g:"Securite"},
+  {k:"nc",l:"Non-Conformites",i:"nc",g:"Qualite"},
+  {k:"actions",l:"Plan d Actions",i:"actions",g:"Qualite"},
+  {k:"documents",l:"Documents",i:"documents",g:"Qualite"},
+  {k:"docsImport",l:"Import PDF",i:"pdf",g:"Qualite"},
+  {k:"employees",l:"Employes",i:"employee",g:"RH"},
+  {k:"training",l:"Formations",i:"training",g:"RH"},
+  {k:"environment",l:"Environnement",i:"environment"},
+  {k:"sites",l:"Mes sites et Lieux",i:"site",g:"Configuration"},
+  {k:"settings",l:"Parametres",i:"settings",g:"Configuration"},
+];
+
+// ================================================================
+// SETUP & CONFIG
+// ================================================================
+function showSetup() {
+  document.getElementById("setup-banner").style.display = "block";
+  document.getElementById("auth").style.display = "none";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("splash").style.display = "none";
+}
+
+async function saveConfig() {
+  var url = document.getElementById("sb-url").value.trim();
+  var key = document.getElementById("sb-key").value.trim();
+  var msg = document.getElementById("setup-msg");
+  if (!url || !key) { msg.className="aerr"; msg.textContent="URL et clé requis."; msg.style.display="block"; return; }
+  if (!url.includes("supabase.co")) { msg.className="aerr"; msg.textContent="URL invalide. Elle doit contenir supabase.co"; msg.style.display="block"; return; }
+  msg.className="aok"; msg.textContent="Test de connexion..."; msg.style.display="block";
+  // Test connection
+  try {
+    var r = await fetch(url + "/rest/v1/", {headers:{"apikey":key,"Authorization":"Bearer "+key}});
+    if (r.status === 200 || r.status === 404) {
+      saveConfigLocal(url, key);
+      sbInit(url, key);
+      msg.className="aok"; msg.textContent="Connexion reussie!";
+      setTimeout(function(){document.getElementById("setup-banner").style.display="none"; document.getElementById("auth").style.display="flex";}, 1000);
+    } else {
+      msg.className="aerr"; msg.textContent="Connexion echouee ("+r.status+"). Verifiez URL et cle."; msg.style.display="block";
+    }
+  } catch(e) { msg.className="aerr"; msg.textContent="Erreur: " + e.message; msg.style.display="block"; }
+}
+
+function copySQL() {
+  var sql = document.getElementById("sql-block").textContent;
+  navigator.clipboard.writeText(sql).then(function(){toast("SQL copie!");}).catch(function(){alert(sql);});
+}
+
+// ================================================================
+// AUTH
+// ================================================================
+function swTab(t) {
+  document.getElementById("fl").style.display = t===0?"block":"none";
+  document.getElementById("fr").style.display = t===1?"block":"none";
+  document.getElementById("tl").style.background = t===0?"linear-gradient(135deg,#4f6ef7,#7c5cf6)":"transparent";
+  document.getElementById("tl").style.color = t===0?"#fff":"#6b6f96";
+  document.getElementById("tr").style.background = t===1?"linear-gradient(135deg,#4f6ef7,#7c5cf6)":"transparent";
+  document.getElementById("tr").style.color = t===1?"#fff":"#6b6f96";
+  document.getElementById("amsg").style.display = "none";
+}
+function setAMsg(m,e) { var el=document.getElementById("amsg"); el.className=e?"aerr":"aok"; el.textContent=m; el.style.display="block"; }
+
+async function login() {
+  var email = document.getElementById("le").value.trim();
+  var pass = document.getElementById("lp").value;
+  if (!email||!pass) { setAMsg("Remplissez tous les champs.",true); return; }
+  setAMsg("Connexion...",false);
+  var r = await sbAuth("token?grant_type=password", {email:email,password:pass});
+  if (r.error) { setAMsg(r.error.message||"Erreur de connexion.",true); return; }
+  SB_SESSION = r;
+  localStorage.setItem("qhse_session", JSON.stringify(r));
+  startApp();
+}
+
+async function register() {
+  var name = document.getElementById("rn").value.trim();
+  var email = document.getElementById("re").value.trim();
+  var company = document.getElementById("rc").value.trim();
+  var pass = document.getElementById("rp").value;
+  var pass2 = document.getElementById("rp2").value;
+  if (!name||!email||!pass) { setAMsg("Nom, email et mot de passe obligatoires.",true); return; }
+  if (pass !== pass2) { setAMsg("Mots de passe differents.",true); return; }
+  if (pass.length < 6) { setAMsg("6 caracteres minimum.",true); return; }
+  setAMsg("Creation du compte...",false);
+  var r = await sbAuth("signup", {email:email, password:pass, data:{name:name, company:company}});
+  if (r.error) { setAMsg(r.error.message||"Erreur.",true); return; }
+  if (r.access_token) {
+    SB_SESSION = r;
+    localStorage.setItem("qhse_session", JSON.stringify(r));
+    startApp();
+  } else {
+    setAMsg("Compte cree! Verifiez votre email pour confirmer.",false);
+  }
+}
+
+async function forgotPwd() {
+  var email = document.getElementById("le").value.trim();
+  if (!email) { setAMsg("Entrez votre email d abord.",true); return; }
+  await sbAuth("recover", {email:email});
+  setAMsg("Email de reinitialisation envoye si le compte existe.",false);
+}
+
+async function startApp() {
+  document.getElementById("auth").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  document.getElementById("fab").style.display = "flex";
+  if (window.innerWidth>=768) document.getElementById("side").className="on";
+  S.user = SB_SESSION.user || {};
+  // Load user profile
+  var p = await sbFrom("profiles","GET",null,"id=eq."+S.user.id);
+  if (p.data && p.data[0]) {
+    S.user.name = p.data[0].name || S.user.email;
+    S.user.company = p.data[0].company || "";
+  } else {
+    S.user.name = S.user.email;
+    S.user.company = "";
+  }
+  document.getElementById("av").textContent = (S.user.name||"?").charAt(0).toUpperCase();
+  if (S.user.company) document.getElementById("sco").textContent = S.user.company;
+  S.sites = await gSites();
+  mkNav();
+  goto("dashboard");
+}
+
+async function doLogout() {
+  await sbAuth("logout", {}).catch(function(){});
+  SB_SESSION = null;
+  localStorage.removeItem("qhse_session");
+  cache = {};
+  S = {user:null,pg:"dashboard",search:"",dark:true,aiOpen:false,aiMsgs:[],aiLoad:false,notif:false,mkey:null,eid:null,sites:[],gsOpen:false};
+  document.getElementById("app").style.display = "none";
+  document.getElementById("auth").style.display = "flex";
+  document.getElementById("side").className = "off";
+  document.getElementById("fab").style.display = "none";
+}
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+var PI = {
+  dashboard:'<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>',
+  incidents:'<path d="M12 2L1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z"/>',
+  audits:'<path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>',
+  risks:'<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>',
+  nc:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>',
+  actions:'<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>',
+  environment:'<path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 5.5-8 5.5V9.5S12 3 17 8z"/>',
+  training:'<path d="M12 3L1 9l4 2.18V15h2v-2.82L9 13.09V15l3 1.8 3-1.8v-1.91l2-1.09V15h2v-3.82L23 9 12 3z"/>',
+  documents:'<path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>',
+  ppe:'<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>',
+  fire:'<path d="M17.66 11.2C16.22 9.78 14.82 8.72 13.95 3 13 3.23 11.46 4.32 8.87 6.46c2.2 2.44 2.2 6.76.2 9.76C8.14 13.93 6.87 12.33 7.45 8.64 5.78 10 5 14.47 5.29 15.97c.14.6.71 1.73 1.79 3.46.69 1.09 2 2.07 3.88 2.45-1.62-1.44-2.03-3.58-.92-5.42a8 8 0 0 0 1.24.9c.47.28.96.5 1.52.64-1.13-2.24-.8-5.53 1.55-7.62.37.74.78 1.47 1.31 2.08.4.4.78.82 1.1 1.25.8 1.9.25 3.85-.52 4.75C18.57 19.5 20 17.13 20 14.5c0-1.2-.37-2.32-.97-3.25l-1.37-.05z"/>',
+  vehicle:'<path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>',
+  employee:'<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
+  meeting:'<path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>',
+  settings:'<path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.3.07-.62.07-.94s-.03-.64-.07-1l2.08-1.6c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.36-.07.73-.07 1.1s.03.74.07 1l-2.08 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.07-1.63z"/>',
+  site:'<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>',
+  pdf:'<path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5z"/>',
+  plus:'<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>',
+  edit:'<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
+  del:'<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>',
+  search:'<path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>',
+  dl:'<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>',
+  warn:'<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>',
+  check:'<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',
+  moon:'<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>',
+  sun:'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>'
+};
+function ic(n,s) { s=s||18; return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">'+(PI[n]||PI.settings)+"</svg>"; }
+
+function mkNav() {
+  var nav = document.getElementById("nav"); if(!nav) return;
+  var h=""; var lg="";
+  NAV.forEach(function(item){
+    if(item.g&&item.g!==lg){h+='<p class="ng">'+item.g+"</p>";lg=item.g;}
+    if(!item.g)lg="";
+    h+='<button class="ni'+(S.pg===item.k?" on":"")+"\" onclick=\"goto('"+item.k+"')\">"+ic(item.i,16)+"<span>"+item.l+"</span>"+(S.pg===item.k?'<div style="margin-left:auto;width:5px;height:5px;border-radius:50%;background:#4f6ef7"></div>':"")+"</button>";
+  });
+  nav.innerHTML=h;
+}
+
+// ================================================================
+// PAGES (async)
+// ================================================================
+async function pgDash() {
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  var mods=["incidents","actions","risks","nc","ppe","fire","vehicles","meetings"];
+  var c={};
+  await Promise.all(mods.map(async function(k){c[k]=await gRecs(k);}));
+
+  var oI=c.incidents.filter(function(r){return r.status==="OPEN";}).length;
+  var oA=c.actions.filter(function(r){return r.status==="OVERDUE";}).length;
+  var cR=c.risks.filter(function(r){return r.level==="CRITICAL";}).length;
+  var oN=c.nc.filter(function(r){return r.status==="OPEN";}).length;
+  var eP=c.ppe.filter(function(r){return r.status==="EXPIRE";}).length;
+  var nF=c.fire.filter(function(r){return r.status==="NON CONFORME";}).length;
+  var planM=c.meetings.filter(function(r){return r.status==="PLANNED";}).length;
+
+  var kpis=[
+    {l:"Incidents ouverts",v:oI,i:"incidents",c:"#ef4444",mod:"incidents"},
+    {l:"Risques critiques",v:cR,i:"risks",c:"#f59e0b",mod:"risks"},
+    {l:"Actions en retard",v:oA,i:"actions",c:"#7c5cf6",mod:"actions"},
+    {l:"NC ouvertes",v:oN,i:"nc",c:"#ec4899",mod:"nc"},
+    {l:"EPI expires",v:eP,i:"ppe",c:"#ef4444",mod:"ppe"},
+    {l:"Extincteurs NC",v:nF,i:"fire",c:"#f97316",mod:"fire"},
+    {l:"Reunions planifiees",v:planM,i:"meeting",c:"#22c55e",mod:"meetings"},
+    {l:"Sites configures",v:S.sites.length,i:"site",c:"#38bdf8",mod:"sites"},
+  ];
+  var kH=kpis.map(function(k){return '<div class="kpi" onclick="goto(\''+k.mod+'\')"><div style="position:absolute;top:-12px;right:-12px;width:54px;height:54px;border-radius:50%;background:'+k.c+'15"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;margin:0">'+k.l+'</p><h2 style="font-size:24px;font-weight:800;margin:2px 0">'+k.v+'</h2></div><div style="color:'+k.c+';background:'+k.c+'22;padding:7px;border-radius:8px">'+ic(k.i,18)+"</div></div></div>";}).join("");
+
+  // Vehicles docs
+  var vDocH="";
+  c.vehicles.slice(0,4).forEach(function(v){
+    var docs=[{l:"Permis",d:v.licenseExpiry},{l:"Assurance",d:v.insuranceExpiry},{l:"Transport",d:v.transportCardExpiry},{l:"Visite",d:v.technicalExpiry},{l:"Vidange",d:v.oilChangeExpiry}];
+    vDocH+='<div style="padding:7px 0;border-bottom:1px solid #232640"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><p style="margin:0;font-size:12px;font-weight:700">'+xe(v.plate||"--")+" "+xe(v.model||"")+"</p><span style=\"font-size:11px;color:#6b6f96\">"+xe(v.driver||"")+"</span></div>";
+    vDocH+=docs.filter(function(d){return d.d;}).map(function(doc){var n=dl(doc.d);var c2=n===null?"#6b6f96":n<0?"#ef4444":n<=30?"#f59e0b":"#22c55e";return '<span class="bdg" style="background:'+c2+'22;color:'+c2+';border:1px solid '+c2+'44;margin-right:3px">'+doc.l+": "+(n===null?"--":n<0?"Exp.":n+"j")+"</span>";}).join("")+"</div>";
+  });
+  if(!c.vehicles.length)vDocH='<p style="color:#6b6f96;font-size:13px">Aucun vehicule</p>';
+
+  var ncH=c.nc.filter(function(n){return n.status==="OPEN";}).slice(0,4).map(function(n){return '<div style="padding:6px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between;align-items:center"><div><p style="margin:0;font-size:12px;font-weight:600">'+xe(String(n.description||"").substring(0,35))+"</p><p style=\"margin:0;font-size:11px;color:#6b6f96\">"+xe(n.source||"")+"</p></div>"+ebdg(n.dueDate)+"</div>";}).join()||'<p style="color:#6b6f96;font-size:13px">Aucune NC ouverte</p>';
+
+  var sitesH=S.sites.length?S.sites.map(function(s){return '<div style="padding:5px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between"><div><p style="margin:0;font-size:12px;font-weight:600">'+xe(s.name)+"</p><p style=\"margin:0;font-size:10px;color:#6b6f96\">"+xe(s.city||"")+"</p></div></div>";}).join():'<p style="color:#6b6f96;font-size:13px">Aucun site</p>';
+
+  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:19px;font-weight:800;margin:0">Tableau de bord</h1><p style="color:#6b6f96;font-size:12px;margin:2px 0 0">'+xe(S.user.name||"")+(S.user.company?" - "+xe(S.user.company):"")+'</p><div class="cloud-badge" style="margin-top:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>Donnees synchronisees sur Supabase</div></div><div class="gkpi">'+kH+'</div><div class="gcards"><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Vehicules - Documents</h3>'+vDocH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">NC ouvertes</h3>'+ncH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Mes sites</h3>'+sitesH+"</div></div></div>");
+}
+
+async function pgCRUD(mk) {
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  var def=M[mk];
+  var rows=await gRecs(mk);
+  var srch=S.search.toLowerCase();
+  var filt=srch?rows.filter(function(r){return Object.values(r).some(function(v){return String(v).toLowerCase().indexOf(srch)>=0;});}):rows;
+  var ths=def.c.map(function(col){return "<th>"+col.l+"</th>";}).join("")+"<th style=\"width:80px\"></th>";
+  var trs=!filt.length?'<tr><td colspan="'+(def.c.length+1)+'" style="text-align:center;color:#6b6f96;padding:28px">Aucun enregistrement</td></tr>':
+    filt.map(function(row){
+      var bg="";
+      if(row.status==="NON CONFORME"||row.status==="EXPIRE")bg="background:#ef444408;";
+      var tds=def.c.map(function(col){var v=row[col.k];if(col.b)return "<td>"+bdg(v||"")+"</td>";if(col.e)return "<td>"+ebdg(v)+"</td>";return '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+xe(v==null?"--":String(v))+"</td>";}).join("");
+      return '<tr style="'+bg+'">'+tds+'<td><div style="display:flex;gap:3px"><button data-action="edit" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+"</button>"+'<button data-action="del" data-id="'+row.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+"</button></div></td></tr>";
+    }).join("");
+
+  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+filt.length+" enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' CSV</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' Nouveau</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder="Rechercher..." value="'+xe(S.search)+'" oninput="S.search=this.value;pgCRUD(\''+mk+'\')" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody>"+trs+"</tbody></table></div></div></div>");
+}
+
+async function pgSites() {
+  var sitesH="";
+  S.sites.forEach(function(s){
+    sitesH+='<div class="sc"><div><p style="margin:0;font-weight:700;font-size:15px">'+xe(s.name)+"</p><p style=\"margin:4px 0 0;font-size:13px;color:#6b6f96\">"+xe(s.city||"--")+", "+xe(s.country||"Cote d Ivoire")+"</p>"+(s.address?'<p style="margin:2px 0 0;font-size:12px;color:#6b6f96">'+xe(s.address)+"</p>":"")+'<span class="bdg" style="margin-top:6px;display:inline-block;background:#4f6ef718;color:#4f6ef7;border:1px solid #4f6ef730">'+xe(s.type||"Site")+"</span></div>"+'<div style="display:flex;gap:6px"><button data-action="editsite" data-id="'+s.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:5px 9px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",14)+"</button>"+'<button data-action="delsite" data-id="'+s.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:5px 9px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",14)+"</button></div></div>";
+  });
+  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic("site",22)+"</span><div><h1>Mes sites et Lieux</h1><p>Gerez vos sites</p></div></div>"+'<button data-action="newsite" class="btn bp bsm">'+ic("plus",12)+" Ajouter un site</button></div>"+(S.sites.length?sitesH:'<div style="text-align:center;padding:40px;color:#6b6f96"><p style="font-size:15px">Aucun site configure</p></div>')+"</div>");
+}
+
+function oSite(id) {
+  var s=id?(S.sites.find(function(x){return x.id==id;})||{}):{};
+  S.mkey="__site__";S.eid=id||null;
+  document.getElementById("mtit").textContent=id?"Modifier le site":"Ajouter un site";
+  document.getElementById("msave").innerHTML=ic("check",13)+" "+(id?"Enregistrer":"Ajouter");
+  document.getElementById("msave").onclick=saveSiteA;
+  document.getElementById("mmsg").style.display="none";
+  document.getElementById("mbtns").style.display="flex";
+  var types=["Siege social","Bureau","Usine / Atelier","Chantier BTP","Entrepot / Depot","Exploitation agricole","Mine / Carriere","Zone industrielle","Port / Terminal","Aeroport","Site petrolier","Autre"];
+  document.getElementById("mflds").innerHTML='<div class="g2"><div class="f"><label>Nom du site *</label><input data-k="name" type="text" value="'+xe(s.name||'')+'" placeholder="Ex: Siege Abidjan"/></div><div class="f"><label>Type</label><select data-k="type"><option value="">--</option>'+types.map(function(t){return "<option"+(t===s.type?" selected":"")+">"+t+"</option>";}).join("")+"</select></div>"+'<div class="f"><label>Ville *</label><input data-k="city" type="text" value="'+xe(s.city||'')+'" placeholder="Ex: Abidjan..."/></div><div class="f"><label>Pays</label><input data-k="country" type="text" value="'+xe(s.country||'Cote d Ivoire')+'"/></div><div class="f" style="grid-column:1/-1"><label>Adresse</label><input data-k="address" type="text" value="'+xe(s.address||'')+'"/></div></div>';
+  showMod();
+}
+
+async function saveSiteA() {
+  var msg=document.getElementById("mmsg");var data={};
+  document.querySelectorAll("#mflds [data-k]").forEach(function(el){data[el.getAttribute("data-k")]=el.value.trim();});
+  if(!data.name||!data.city){msg.className="aerr";msg.textContent="Nom et ville obligatoires.";msg.style.display="block";return;}
+  if(S.eid)data.id=S.eid;
+  await saveSite(data);
+  closeMod();toast("Site sauvegarde");pgSites();
+}
+
+async function delSiteA(id) {
+  if(!confirm("Supprimer ce site?"))return;
+  await delSite(id);toast("Supprime");pgSites();
+}
+
+async function pgDocsImport() {
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  var docs=await gDocs();
+  var rows=docs.map(function(doc){return '<tr><td style="font-weight:600">'+xe(doc.name||"")+"</td><td>"+xe((doc.ext||"").toUpperCase())+"</td><td>"+xe(doc.size||"")+"</td><td>"+xe(doc.date||"")+"</td>"+'<td><div style="display:flex;gap:4px"><button data-action="dldoc" data-id="'+doc.id+'" style="background:#22c55e15;border:1px solid #22c55e30;border-radius:6px;padding:4px 9px;cursor:pointer;color:#22c55e;font-size:11px;font-weight:600;font-family:inherit">Telecharger</button><button data-action="deldoc" data-id="'+doc.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:4px 8px;cursor:pointer;color:#ef4444;display:flex;align-items:center">'+ic("del",12)+"</button></div></td></tr>";}).join("");
+  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic("pdf",22)+"</span><div><h1>Import de documents</h1><p>"+docs.length+" document(s) - stockes sur Supabase</p></div></div></div>"+'<div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:9px;padding:11px 14px;font-size:13px;color:#4f6ef7;margin-bottom:14px">Importez PDF, Word, Excel. Stockes sur votre serveur Supabase.</div><div id="dz-area" class="dz"><div style="font-size:40px;margin-bottom:10px">&#128194;</div><p style="font-weight:700;font-size:15px;margin:0">Glissez vos fichiers ici ou cliquez</p><p style="font-size:12px;color:#6b6f96;margin:5px 0 0">PDF, Word, Excel, Images</p><input type="file" id="fi-doc" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" style="display:none" onchange="handleDocFiles(this.files)"/></div>'+(docs.length?'<div class="card0"><div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Taille</th><th>Importe le</th><th style="width:180px">Actions</th></tr></thead><tbody>'+rows+"</tbody></table></div></div>":'<p style="text-align:center;color:#6b6f96;padding:20px">Aucun document</p>')+"</div>");
+  var dz=document.getElementById("dz-area");
+  if(dz){dz.onclick=function(){var f=document.getElementById("fi-doc");if(f)f.click();};dz.ondragover=function(e){e.preventDefault();dz.classList.add("drag");};dz.ondragleave=function(){dz.classList.remove("drag");};dz.ondrop=function(e){e.preventDefault();dz.classList.remove("drag");handleDocFiles(e.dataTransfer.files);};}
+}
+
+async function handleDocFiles(files) {
+  if(!files||!files.length)return;
+  var arr=Array.from(files);var done=0;
+  for(var i=0;i<arr.length;i++){
+    var file=arr[i];
+    var ext=file.name.split(".").pop().toLowerCase();
+    var sz=file.size<1024?(file.size+"o"):file.size<1048576?(Math.round(file.size/1024)+"Ko"):(Math.round(file.size/1048576*10)/10+"Mo");
+    var reader=new FileReader();
+    await new Promise(function(resolve){
+      reader.onload=async function(e){
+        await sDoc({name:file.name,ext:ext,size:sz,date:new Date().toLocaleDateString("fr-FR"),data:e.target.result});
+        done++;resolve();
+      };
+      reader.onerror=resolve;
+      reader.readAsDataURL(file);
+    });
+  }
+  toast(done+" fichier(s) importe(s)");
+  pgDocsImport();
+}
+
+function pgSettings() {
+  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:18px;font-weight:800;margin:0">Parametres</h1></div><div class="gcards"><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Theme</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+[{k:true,l:"Sombre",i:"moon"},{k:false,l:"Clair",i:"sun"}].map(function(t){var a=S.dark===t.k;return "<button onclick=\"setTh("+t.k+")\" style=\"padding:14px;border-radius:12px;border:2px solid "+(a?"#4f6ef7":"#232640")+";cursor:pointer;background:"+(a?"#4f6ef710":"transparent")+";text-align:left\"><div style=\"display:flex;align-items:center;gap:8px\">"+ic(t.i,16)+"<span style=\"font-size:13px;color:"+(a?"#4f6ef7":"#e2e5f5")+"\">"+t.l+"</span></div></button>";}).join("")+"</div></div>"+'<div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Connexion Supabase</h3><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">URL</span><span style="font-weight:600;font-size:11px;color:#22c55e">Connecte</span></div><button onclick="showSetup()" class="btn bg0" style="width:100%;justify-content:center;margin-top:12px">Reconfigurer</button></div><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">A propos</h3>'+[["Version","5.0 - Cloud"],["Backend","Supabase PostgreSQL"],["Auth","Email/Password"],["Modules","14 modules QHSE"],["Standards","ISO 45001 - 14001 - 9001"]].map(function(r){return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">'+r[0]+"</span><span style=\"font-weight:600\">"+r[1]+"</span></div>";}).join("")+"</div></div></div>");
+}
+
+function pgProfile() {
+  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:18px;font-weight:800;margin:0">Mon profil</h1></div><div class="gcards"><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Informations</h3><div id="pm" style="display:none;margin-bottom:10px"></div><div class="f"><label>Nom complet</label><input id="pn" type="text" value="'+xe(S.user.name||'')+'"/></div><div class="f"><label>Email (non modifiable)</label><input type="email" value="'+xe(S.user.email||'')+'" disabled style="opacity:.6"/></div><div class="f"><label>Entreprise</label><input id="pc" type="text" value="'+xe(S.user.company||'')+'"/></div><button onclick="savPro()" class="btn bp">'+ic("check",13)+" Enregistrer</button></div></div></div>");
+}
+
+async function savPro() {
+  var name=document.getElementById("pn").value.trim();
+  var company=document.getElementById("pc").value.trim();
+  var msg=document.getElementById("pm");
+  syncStart();
+  await sbFrom("profiles","PATCH",{name:name,company:company},"id=eq."+S.user.id);
+  syncEnd();
+  S.user.name=name; S.user.company=company;
+  document.getElementById("av").textContent=(name||"?").charAt(0).toUpperCase();
+  if(company)document.getElementById("sco").textContent=company;
+  msg.className="aok";msg.textContent="Profil mis a jour!";msg.style.display="block";
+  toast("Profil mis a jour");
+}
+
+// ================================================================
+// GOTO
+// ================================================================
+function goto(k) {
+  S.pg=k; S.search=""; closeSide(); mkNav();
+  var n=NAV.find(function(n){return n.k===k;});
+  document.getElementById("ttl").textContent=n?n.l:"Tableau de bord";
+  if(k==="dashboard") pgDash();
+  else if(k==="sites") pgSites();
+  else if(k==="docsImport") pgDocsImport();
+  else if(k==="settings") pgSettings();
+  else if(k==="profile") pgProfile();
+  else if(M[k]) pgCRUD(k);
+  else put('<p style="padding:32px;text-align:center;color:#6b6f96">Page en developpement</p>');
+}
+
+// ================================================================
+// MODAL CRUD (async)
+// ================================================================
+async function oCreate(mk) {
+  S.mkey=mk;S.eid=null;
+  document.getElementById("mtit").textContent="Nouveau - "+M[mk].l;
+  document.getElementById("msave").innerHTML=ic("check",13)+" Creer";
+  document.getElementById("msave").onclick=saveMod;
+  document.getElementById("mmsg").style.display="none";
+  document.getElementById("mbtns").style.display="flex";
+  bldMF(mk,{});showMod();
+}
+async function oEdit(mk,id) {
+  var rows=await gRecs(mk);
+  var row=rows.find(function(r){return r.id==id;});if(!row)return;
+  S.mkey=mk;S.eid=id;
+  document.getElementById("mtit").textContent="Modifier - "+M[mk].l;
+  document.getElementById("msave").innerHTML=ic("check",13)+" Enregistrer";
+  document.getElementById("msave").onclick=saveMod;
+  document.getElementById("mmsg").style.display="none";
+  document.getElementById("mbtns").style.display="flex";
+  bldMF(mk,row);showMod();
+}
+function bldMF(mk,data) {
+  var def=M[mk];var fs=typeof def.f==="function"?def.f():def.f;
+  document.getElementById("mflds").innerHTML=fs.map(function(f){
+    var v=String(data[f.k]||"");var sp=f.ta?"grid-column:1/-1":"";
+    if(f.ta)return '<div class="f" style="'+sp+'"><label>'+f.l+'</label><textarea data-k="'+f.k+'" rows="3">'+xe(v)+"</textarea></div>";
+    if(f.o){var os=f.o.map(function(o){return "<option value=\""+xe(o)+"\""+(o===v?" selected":"")+">"+o+"</option>";}).join("");return '<div class="f" style="'+sp+'"><label>'+f.l+'</label><select data-k="'+f.k+'"><option value="">-- Selectionner --</option>'+os+"</select></div>";}
+    return '<div class="f" style="'+sp+'"><label>'+f.l+'</label><input type="'+(f.t||"text")+'" data-k="'+f.k+'" value="'+xe(v)+'"/></div>';
+  }).join("");
+}
+function showMod(){document.getElementById("mbg").className="mbg on";}
+function closeMod(){document.getElementById("mbg").className="mbg";S.mkey=null;S.eid=null;}
+async function saveMod() {
+  var mk=S.mkey;if(!mk||mk.startsWith("__"))return;
+  var btn=document.getElementById("msave");btn.disabled=true;btn.innerHTML=ic("settings",13)+" ...";
+  var fd={};document.querySelectorAll("#mflds [data-k]").forEach(function(el){fd[el.getAttribute("data-k")]=el.value;});
+  await sRec(mk,fd,S.eid||null);
+  btn.disabled=false;closeMod();toast(S.eid?"Modifie":"Cree");
+  pgCRUD(mk);
+}
+async function dRow(id) {
+  if(!confirm("Supprimer?"))return;
+  await dRec(id);toast("Supprime");
+  pgCRUD(S.pg);
+}
+
+async function csvExp(mk) {
+  var def=M[mk];var rows=await gRecs(mk);
+  if(!rows.length){toast("Aucune donnee",true);return;}
+  var h=def.c.map(function(col){return col.l;}).join(";");
+  var b=rows.map(function(r){return def.c.map(function(col){return String(r[col.k]||"").replace(/;/g,",").replace(/\n/g," ");}).join(";");});
+  var blob=new Blob(["\uFEFF"+[h].concat(b).join("\n")],{type:"text/csv;charset=utf-8;"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=mk+"_export.csv";a.click();
+  toast("Export CSV: "+rows.length+" lignes");
+}
+
+// ================================================================
+// EVENT DELEGATION
+// ================================================================
+document.addEventListener("click",function(e){
+  var btn=e.target.closest("[data-action]");if(!btn)return;
+  var act=btn.getAttribute("data-action");
+  var id=btn.getAttribute("data-id");
+  var mk=btn.getAttribute("data-mk")||S.pg;
+  if(act==="edit")oEdit(mk,id);
+  else if(act==="del"){if(confirm("Supprimer?")){dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}}
+  else if(act==="create")oCreate(mk);
+  else if(act==="csv")csvExp(mk);
+  else if(act==="newsite")oSite(0);
+  else if(act==="editsite")oSite(id);
+  else if(act==="delsite")delSiteA(id);
+  else if(act==="dldoc")downloadDoc(id);
+  else if(act==="deldoc"){if(confirm("Supprimer?")){dDoc(id).then(function(){pgDocsImport();});}}
+});
+
+// ================================================================
+// GLOBAL SEARCH
+// ================================================================
+function togGS(){S.gsOpen=!S.gsOpen;var w=document.getElementById("gsw");var ttl=document.getElementById("ttl");if(w)w.style.display=S.gsOpen?"block":"none";if(ttl)ttl.style.display=S.gsOpen?"none":"block";if(S.gsOpen){setTimeout(function(){var i=document.getElementById("gsinput");if(i){i.focus();i.value="";}},60);}else{var r=document.getElementById("gsres");if(r)r.style.display="none";}}
+async function doGS(q) {
+  var res=document.getElementById("gsres");if(!res)return;
+  if(!q||q.length<2){res.style.display="none";return;}
+  var q2=q.toLowerCase();var all=[];
+  for(var mk in M){var rows=cache[mk]||[];rows.forEach(function(r){if(Object.values(r).some(function(v){return String(v).toLowerCase().indexOf(q2)>=0;})){var title=r.title||r.fullName||r.plate||r.hazard||r.indicator||String(r.description||"").substring(0,30)||r.ref||"--";all.push({mk:mk,id:r.id,title:title,label:M[mk].l});}});}
+  if(!all.length){res.innerHTML='<div style="padding:14px;text-align:center;color:#6b6f96;font-size:13px">Aucun resultat</div>';res.style.display="block";return;}
+  var h='<div style="padding:5px 10px;font-size:10px;font-weight:700;color:#6b6f96;text-transform:uppercase;border-bottom:1px solid #232640">'+all.length+' resultat(s)</div>';
+  all.slice(0,15).forEach(function(item){h+='<div onclick="togGS();goto(\''+item.mk+'\')" style="padding:9px 13px;border-bottom:1px solid #232640;cursor:pointer;display:flex;justify-content:space-between" onmouseover="this.style.background=\'#ffffff0a\'" onmouseout="this.style.background=\'\'"><div><p style="margin:0;font-size:13px;font-weight:600">'+xe(String(item.title).substring(0,40))+"</p><p style=\"margin:0;font-size:11px;color:#6b6f96\">"+item.label+"</p></div></div>";});
+  res.innerHTML=h;res.style.display="block";
+}
+document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();togGS();}});
+
+// ================================================================
+// NOTIFICATIONS (local check on cached data)
+// ================================================================
+function togNotif(){S.notif=!S.notif;var np=document.getElementById("npanel");np.classList.toggle("on",S.notif);if(S.notif)renderNotifs();}
+function renderNotifs(){
+  var list=document.getElementById("nlist");if(!list)return;
+  var alerts=[];
+  var mods=Object.keys(cache);
+  mods.forEach(function(mk){(cache[mk]||[]).forEach(function(r){if(r.status==="OPEN"&&mk==="nc")alerts.push({text:"NC: "+String(r.description||"").substring(0,30),mod:mk,color:"#ef4444"});if(r.status==="EXPIRE"&&mk==="ppe")alerts.push({text:"EPI expire: "+r.type,mod:mk,color:"#f59e0b"});if(r.status==="NON CONFORME"&&mk==="fire")alerts.push({text:"Extincteur NC: "+r.ref,mod:mk,color:"#ef4444"});});});
+  if(!alerts.length){list.innerHTML='<p style="padding:13px;color:#6b6f96;font-size:13px">Aucune alerte</p>';return;}
+  list.innerHTML=alerts.map(function(a){return '<div onclick="togNotif();goto(\''+a.mod+'\')" style="padding:8px 13px;border-bottom:1px solid #232640;cursor:pointer"><p style="margin:0;font-size:12px;font-weight:600;color:'+a.color+'">'+xe(a.text)+"</p></div>";}).join("");
+  var cnt=document.getElementById("ncnt");if(cnt){cnt.textContent=alerts.length;cnt.style.display=alerts.length?"flex":"none";}
+}
+
+// ================================================================
+// UI
+// ================================================================
+function togSide(){var s=document.getElementById("side");var o=document.getElementById("ov");if(s.className==="on"){s.className="off";o.className="";}else{s.className="on";o.className="on";}}
+function closeSide(){if(window.innerWidth<768){document.getElementById("side").className="off";document.getElementById("ov").className="";}}
+function togTheme(){setTh(!S.dark);}
+function setTh(d){S.dark=d;document.body.classList.toggle("light",!d);var i=document.getElementById("thico");if(i)i.innerHTML=d?'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>' :'<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>';}
+function togAI(){S.aiOpen=!S.aiOpen;document.getElementById("aip").classList.toggle("on",S.aiOpen);document.getElementById("fab").style.display=S.aiOpen?"none":"flex";if(S.aiOpen){if(!S.aiMsgs.length)S.aiMsgs=[{r:"b",t:"Bonjour! Je suis votre assistant IA QHSE.\n\nPosez votre question!"}];rdrAI();}}
+function rdrAI(){var c=document.getElementById("aimsg");if(!c)return;c.innerHTML=S.aiMsgs.map(function(m){return '<div style="display:flex;justify-content:'+(m.r==="u"?"flex-end":"flex-start")+'"><div class="aimsg '+m.r+'">'+xe(m.t)+"</div></div>";}).join("")+(S.aiLoad?'<div style="display:flex"><div class="aimsg b">...</div></div>':"");c.scrollTop=c.scrollHeight;}
+async function aiSend(ov){var inp=document.getElementById("aiinp");var t=(ov||(inp?inp.value:"")).trim();if(!t||S.aiLoad)return;if(inp)inp.value="";S.aiMsgs.push({r:"u",t:t});S.aiLoad=true;rdrAI();try{var msgs=S.aiMsgs.map(function(m){return{role:m.r==="b"?"assistant":"user",content:m.t};});var rs=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:"Tu es un expert QHSE certifie ISO 45001, ISO 14001, ISO 9001. Reponds en francais, de facon concise et pratique.",messages:msgs})});var data=await rs.json();S.aiMsgs.push({r:"b",t:(data.content&&data.content[0])?data.content[0].text:"Desole, reessayez."});}catch(e){S.aiMsgs.push({r:"b",t:"Erreur reseau."});}S.aiLoad=false;rdrAI();}
+window.addEventListener("resize",function(){if(window.innerWidth>=768&&S.user){document.getElementById("side").className="on";document.getElementById("ov").className="";}});
+document.addEventListener("click",function(e){var np=document.getElementById("npanel");var nb=document.getElementById("nbtn");if(np&&!np.contains(e.target)&&nb&&!nb.contains(e.target)){np.classList.remove("on");S.notif=false;}var gs=document.getElementById("gsres");var gw=document.getElementById("gsw");if(gs&&gw&&!gw.contains(e.target))gs.style.display="none";});
+
+// ================================================================
+// INIT
+// ================================================================
+(function(){
+  var cfg=getConfig();
+  if(!cfg){showSetup();document.getElementById("splash").style.display="none";return;}
+  sbInit(cfg.url,cfg.key);
+  // Try restore session
+  try{var sess=JSON.parse(localStorage.getItem("qhse_session"));if(sess&&sess.access_token){SB_SESSION=sess;startApp().then(function(){document.getElementById("splash").style.display="none";}).catch(function(){document.getElementById("splash").style.display="none";document.getElementById("auth").style.display="flex";});return;}}catch(e){}
+  document.getElementById("splash").style.display="none";
+  document.getElementById("auth").style.display="flex";
+})();
+</script>
+</body>
+</html>
