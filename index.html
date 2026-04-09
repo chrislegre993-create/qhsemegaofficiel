@@ -165,7 +165,7 @@ body.light .sc{background:#f5f7ff;border-color:#e2e6f5}
 create extension if not exists "uuid-ossp";
 
 -- Profils utilisateurs
-create table profiles (
+create table if not exists profiles (
   id uuid references auth.users primary key,
   name text,
   company text,
@@ -174,7 +174,7 @@ create table profiles (
 );
 
 -- Sites
-create table sites (
+create table if not exists sites (
   id bigserial primary key,
   user_id uuid references auth.users not null,
   name text not null,
@@ -186,7 +186,7 @@ create table sites (
 );
 
 -- Enregistrements (tous modules)
-create table records (
+create table if not exists records (
   id bigserial primary key,
   user_id uuid references auth.users not null,
   module text not null,
@@ -197,7 +197,7 @@ create table records (
 );
 
 -- Documents PDF
-create table docs (
+create table if not exists docs (
   id bigserial primary key,
   user_id uuid references auth.users not null,
   name text,
@@ -431,19 +431,40 @@ async function sbAuth(endpoint, body) {
 async function sbFrom(table, method, body, params, token) {
   var url = SB.url + "/rest/v1/" + table;
   if (params) url += "?" + params;
+  var tk = token || (SB_SESSION && SB_SESSION.access_token);
   var opts = {
     method: method || "GET",
-    headers: sbHeaders(token || (SB_SESSION && SB_SESSION.access_token))
+    headers: sbHeaders(tk)
   };
   if (body) opts.body = JSON.stringify(body);
-  if (method === "GET" || !method) opts.headers["Accept"] = "application/json";
+  if (!method || method === "GET") opts.headers["Accept"] = "application/json";
   if (method === "POST") opts.headers["Prefer"] = "return=representation";
   if (method === "PATCH") opts.headers["Prefer"] = "return=representation";
-  var r = await fetch(url, opts);
-  if (r.status === 204) return {data: null, error: null};
-  var data = await r.json();
-  if (!r.ok) return {data: null, error: data};
-  return {data: data, error: null};
+  try {
+    var r = await fetch(url, opts);
+    // Token expired - try refresh
+    if (r.status === 401) {
+      var refreshed = await sbRefreshSession();
+      if (refreshed) {
+        opts.headers["Authorization"] = "Bearer " + SB_SESSION.access_token;
+        r = await fetch(url, opts);
+      } else {
+        doLogout(); return {data: null, error: {message: "Session expiree, reconnectez-vous"}};
+      }
+    }
+    if (r.status === 204) return {data: null, error: null};
+    var data = await r.json();
+    if (!r.ok) {
+      console.error("Supabase error ["+table+"/"+method+"]:", data);
+      toast("Erreur BD: " + (data.message || data.hint || JSON.stringify(data).substring(0,60)), true);
+      return {data: null, error: data};
+    }
+    return {data: data, error: null};
+  } catch(e) {
+    console.error("Network error:", e);
+    toast("Erreur reseau: verifiez votre connexion internet", true);
+    return {data: null, error: {message: e.message}};
+  }
 }
 
 // Token refresh
@@ -466,7 +487,7 @@ var cache = {}; // local cache for speed
 async function gRecs(mod) {
   if (cache[mod]) return cache[mod];
   var r = await sbFrom("records", "GET", null, "module=eq."+mod+"&user_id=eq."+SB_SESSION.user.id+"&order=created_at.desc", null);
-  if (r.error) { console.error(r.error); return []; }
+  if (r.error) { console.error("gRecs error:", r.error); return []; }
   var rows = (r.data || []).map(function(row) {
     var d = row.data || {};
     d.id = row.id; d.ref = row.ref; d.created_at = row.created_at;
@@ -478,11 +499,13 @@ async function gRecs(mod) {
 
 async function sRec(mod, data, id) {
   syncStart();
-  var row = {user_id: SB_SESSION.user.id, module: mod, data: data};
   var r;
   if (id) {
-    r = await sbFrom("records", "PATCH", row, "id=eq."+id);
+    // PATCH: only update the data field, not user_id (avoids RLS conflict)
+    var patchRow = {data: data, updated_at: new Date().toISOString()};
+    r = await sbFrom("records", "PATCH", patchRow, "id=eq."+id+"&user_id=eq."+SB_SESSION.user.id);
   } else {
+    var row = {user_id: SB_SESSION.user.id, module: mod, data: data};
     // Generate ref
     var existing = await gRecs(mod);
     var pfx = mod.slice(0,3).toUpperCase();
@@ -494,7 +517,12 @@ async function sRec(mod, data, id) {
   }
   cache[mod] = null; // invalidate cache
   syncEnd();
-  if (r.error) { console.error(r.error); return {err: "Erreur sauvegarde"}; }
+  if (r.error) {
+    console.error("sRec error:", r.error);
+    var msg = r.error.message || r.error.hint || r.error.details || JSON.stringify(r.error).substring(0,100);
+    toast("Erreur sauvegarde: " + msg, true);
+    return {err: msg};
+  }
   return {ok: 1};
 }
 
@@ -680,10 +708,19 @@ async function saveConfig() {
     if (r.status === 200 || r.status === 404) {
       saveConfigLocal(url, key);
       sbInit(url, key);
-      msg.className="aok"; msg.textContent="Connexion reussie!";
-      setTimeout(function(){document.getElementById("setup-banner").style.display="none"; document.getElementById("auth").style.display="flex";}, 1000);
+      // Verify tables exist
+      var tableCheck = await fetch(url + "/rest/v1/records?limit=1", {headers:{"apikey":key,"Authorization":"Bearer "+key}});
+      if (tableCheck.status === 404 || tableCheck.status === 400) {
+        msg.className="aerr"; msg.textContent="Connexion OK mais tables introuvables. Avez-vous execute le SQL?"; msg.style.display="block";
+        return;
+      }
+      msg.className="aok"; msg.textContent="Connexion et tables verifiees! Redirection...";
+      setTimeout(function(){document.getElementById("setup-banner").style.display="none"; document.getElementById("auth").style.display="flex";}, 1500);
     } else {
-      msg.className="aerr"; msg.textContent="Connexion echouee ("+r.status+"). Verifiez URL et cle."; msg.style.display="block";
+      var errText = "Connexion echouee ("+r.status+").";
+      if (r.status === 401) errText = "Cle API invalide. Verifiez la cle anon dans Settings > API.";
+      if (r.status === 404) errText = "URL invalide. Ex: https://xxx.supabase.co";
+      msg.className="aerr"; msg.textContent=errText; msg.style.display="block";
     }
   } catch(e) { msg.className="aerr"; msg.textContent="Erreur: " + e.message; msg.style.display="block"; }
 }
@@ -749,7 +786,8 @@ async function forgotPwd() {
 
 async function startApp() {
   document.getElementById("auth").style.display = "none";
-  document.getElementById("app").style.display = "flex";
+  document.getElementById("splash").style.display = "flex";
+  document.getElementById("app").style.display = "none";
   document.getElementById("fab").style.display = "flex";
   if (window.innerWidth>=768) document.getElementById("side").className="on";
   S.user = SB_SESSION.user || {};
@@ -765,6 +803,8 @@ async function startApp() {
   document.getElementById("av").textContent = (S.user.name||"?").charAt(0).toUpperCase();
   if (S.user.company) document.getElementById("sco").textContent = S.user.company;
   S.sites = await gSites();
+  document.getElementById("splash").style.display = "none";
+  document.getElementById("app").style.display = "flex";
   mkNav();
   goto("dashboard");
 }
@@ -914,13 +954,13 @@ async function saveSiteA() {
   document.querySelectorAll("#mflds [data-k]").forEach(function(el){data[el.getAttribute("data-k")]=el.value.trim();});
   if(!data.name||!data.city){msg.className="aerr";msg.textContent="Nom et ville obligatoires.";msg.style.display="block";return;}
   if(S.eid)data.id=S.eid;
-  await saveSite(data);
-  closeMod();toast("Site sauvegarde");pgSites();
+  var sr = await saveSite(data);
+  closeMod();toast("Site sauvegarde sur le serveur");await pgSites();
 }
 
 async function delSiteA(id) {
   if(!confirm("Supprimer ce site?"))return;
-  await delSite(id);toast("Supprime");pgSites();
+  await delSite(id);toast("Site supprime");await pgSites();
 }
 
 async function pgDocsImport() {
@@ -1029,9 +1069,15 @@ async function saveMod() {
   var mk=S.mkey;if(!mk||mk.startsWith("__"))return;
   var btn=document.getElementById("msave");btn.disabled=true;btn.innerHTML=ic("settings",13)+" ...";
   var fd={};document.querySelectorAll("#mflds [data-k]").forEach(function(el){fd[el.getAttribute("data-k")]=el.value;});
-  await sRec(mk,fd,S.eid||null);
-  btn.disabled=false;closeMod();toast(S.eid?"Modifie":"Cree");
-  pgCRUD(mk);
+  var result = await sRec(mk,fd,S.eid||null);
+  btn.disabled=false;
+  if (result && result.err) {
+    toast("Erreur: " + result.err, true);
+    return;
+  }
+  closeMod();
+  toast(S.eid?"Modification enregistree sur le serveur":"Cree et enregistre sur le serveur");
+  await pgCRUD(mk);
 }
 async function dRow(id) {
   if(!confirm("Supprimer?"))return;
@@ -1058,14 +1104,14 @@ document.addEventListener("click",function(e){
   var id=btn.getAttribute("data-id");
   var mk=btn.getAttribute("data-mk")||S.pg;
   if(act==="edit")oEdit(mk,id);
-  else if(act==="del"){if(confirm("Supprimer?")){dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}}
+  else if(act==="del"){if(confirm("Supprimer?"))dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}
   else if(act==="create")oCreate(mk);
   else if(act==="csv")csvExp(mk);
   else if(act==="newsite")oSite(0);
   else if(act==="editsite")oSite(id);
   else if(act==="delsite")delSiteA(id);
   else if(act==="dldoc")downloadDoc(id);
-  else if(act==="deldoc"){if(confirm("Supprimer?")){dDoc(id).then(function(){pgDocsImport();});}}
+  else if(act==="deldoc"){if(confirm("Supprimer?"))dDoc(id).then(function(){toast("Supprime");pgDocsImport();});}
 });
 
 // ================================================================
