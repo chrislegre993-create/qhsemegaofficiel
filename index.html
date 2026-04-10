@@ -231,7 +231,11 @@ $$ language plpgsql security definer;
 
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute procedure handle_new_user();</pre>
+  for each row execute procedure handle_new_user();
+
+-- IMPORTANT: Dans Supabase > Authentication > Settings
+-- Desactivez "Enable email confirmations" pour tester sans confirmation email
+-- Ou activez "Confirm email" seulement en production</pre>
       </div>
     </div>
 
@@ -516,7 +520,7 @@ async function sRec(mod, data, id) {
     r = await sbFrom("records", "POST", row, null);
   }
   cache[mod] = null; // invalidate cache
-  syncEnd();
+  syncEnd(!r.error);
   if (r.error) {
     console.error("sRec error:", r.error);
     var msg = r.error.message || r.error.hint || r.error.details || JSON.stringify(r.error).substring(0,100);
@@ -595,8 +599,20 @@ async function downloadDoc(id) {
 // SYNC PROGRESS BAR
 // ================================================================
 var syncCount = 0;
-function syncStart() { syncCount++; var p = document.getElementById("syncprog"); if(p){p.style.width="60%";} }
-function syncEnd() { syncCount = Math.max(0, syncCount-1); var p = document.getElementById("syncprog"); if(p) p.style.width = syncCount > 0 ? "80%" : "0"; }
+function syncStart() {
+  syncCount++;
+  var p = document.getElementById("syncprog");
+  if(p){p.style.background="#4f6ef7";p.style.width="60%";}
+}
+function syncEnd(ok) {
+  syncCount = Math.max(0, syncCount-1);
+  var p = document.getElementById("syncprog");
+  if(p){
+    if(!ok && ok!==undefined) p.style.background="#ef4444";
+    p.style.width = syncCount > 0 ? "80%" : "0";
+    if(syncCount===0) setTimeout(function(){if(p)p.style.background="#4f6ef7";},2000);
+  }
+}
 
 // ================================================================
 // STATE
@@ -681,6 +697,7 @@ var NAV = [
   {k:"employees",l:"Employes",i:"employee",g:"RH"},
   {k:"training",l:"Formations",i:"training",g:"RH"},
   {k:"environment",l:"Environnement",i:"environment"},
+  {k:"analytics",l:"Analytique et KPIs",i:"analytics",g:"Rapports"},
   {k:"sites",l:"Mes sites et Lieux",i:"site",g:"Configuration"},
   {k:"settings",l:"Parametres",i:"settings",g:"Configuration"},
 ];
@@ -772,8 +789,14 @@ async function register() {
     SB_SESSION = r;
     localStorage.setItem("qhse_session", JSON.stringify(r));
     startApp();
+  } else if (r.error === "User already registered") {
+    setAMsg("Email deja utilise. Essayez de vous connecter.",true);
   } else {
-    setAMsg("Compte cree! Verifiez votre email pour confirmer.",false);
+    // Email confirmation required
+    setAMsg("Compte cree! Verifiez votre email (spam aussi) et cliquez le lien de confirmation. Revenez ensuite vous connecter.",false);
+    document.getElementById("fl").style.display="block";
+    document.getElementById("fr").style.display="none";
+    document.getElementById("le").value = document.getElementById("re").value;
   }
 }
 
@@ -850,7 +873,10 @@ var PI = {
   warn:'<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>',
   check:'<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',
   moon:'<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>',
-  sun:'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>'
+  sun:'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>',
+  analytics:'<path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/>',
+  upload:'<path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>',
+  xls:'<path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 2l4 4h-4V4zM8 15l1.5-2.5L11 15l1.5-2.5L14 15h-2l-.5-1-.5 1zm-2-5h8v1H6z"/>'
 };
 function ic(n,s) { s=s||18; return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">'+(PI[n]||PI.settings)+"</svg>"; }
 
@@ -907,7 +933,24 @@ async function pgDash() {
 
   var sitesH=S.sites.length?S.sites.map(function(s){return '<div style="padding:5px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between"><div><p style="margin:0;font-size:12px;font-weight:600">'+xe(s.name)+"</p><p style=\"margin:0;font-size:10px;color:#6b6f96\">"+xe(s.city||"")+"</p></div></div>";}).join():'<p style="color:#6b6f96;font-size:13px">Aucun site</p>';
 
-  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:19px;font-weight:800;margin:0">Tableau de bord</h1><p style="color:#6b6f96;font-size:12px;margin:2px 0 0">'+xe(S.user.name||"")+(S.user.company?" - "+xe(S.user.company):"")+'</p><div class="cloud-badge" style="margin-top:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>Donnees synchronisees sur Supabase</div></div><div class="gkpi">'+kH+'</div><div class="gcards"><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Vehicules - Documents</h3>'+vDocH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">NC ouvertes</h3>'+ncH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Mes sites</h3>'+sitesH+"</div></div></div>");
+  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:19px;font-weight:800;margin:0">Tableau de bord</h1><p style="color:#6b6f96;font-size:12px;margin:2px 0 0">'+xe(S.user.name||"")+(S.user.company?" - "+xe(S.user.company):"")+'</p><div class="cloud-badge" style="margin-top:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>Donnees synchronisees sur Supabase</div><button onclick="testDB()" style="margin-top:6px;background:#232640;border:1px solid #4f6ef730;border-radius:6px;padding:4px 10px;color:#4f6ef7;font-size:11px;cursor:pointer;font-family:inherit">Tester la connexion BD</button></div><div class="gkpi">'+kH+'</div><div class="gcards"><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Vehicules - Documents</h3>'+vDocH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">NC ouvertes</h3>'+ncH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Mes sites</h3>'+sitesH+"</div></div></div>");
+}
+
+async function testDB() {
+  toast("Test en cours...");
+  try {
+    // Test 1: Insert
+    var testRow = {user_id: SB_SESSION.user.id, module: "__test__", data: {t: Date.now()}, ref: "TEST"};
+    var ri = await sbFrom("records","POST",testRow,null);
+    if (ri.error) { toast("ERREUR INSERT: " + (ri.error.message||ri.error.hint||JSON.stringify(ri.error).substring(0,80)), true); return; }
+    var newId = ri.data && ri.data[0] && ri.data[0].id;
+    // Test 2: Select
+    var rs = await sbFrom("records","GET",null,"module=eq.__test__&user_id=eq."+SB_SESSION.user.id);
+    if (rs.error || !rs.data || !rs.data.length) { toast("ERREUR SELECT: donnees non lisibles", true); return; }
+    // Test 3: Delete
+    if (newId) await sbFrom("records","DELETE",null,"id=eq."+newId);
+    toast("✅ Connexion BD OK! INSERT + SELECT + DELETE fonctionnent");
+  } catch(e) { toast("Erreur: " + e.message, true); }
 }
 
 async function pgCRUD(mk) {
@@ -925,7 +968,7 @@ async function pgCRUD(mk) {
       return '<tr style="'+bg+'">'+tds+'<td><div style="display:flex;gap:3px"><button data-action="edit" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+"</button>"+'<button data-action="del" data-id="'+row.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+"</button></div></td></tr>";
     }).join("");
 
-  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+filt.length+" enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' CSV</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' Nouveau</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder="Rechercher..." value="'+xe(S.search)+'" oninput="S.search=this.value;pgCRUD(\''+mk+'\')" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody>"+trs+"</tbody></table></div></div></div>");
+  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+filt.length+" enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">&#8679; Excel/CSV</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' CSV</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' Nouveau</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder="Rechercher..." value="'+xe(S.search)+'" oninput="S.search=this.value;pgCRUD(\''+mk+'\')" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody>"+trs+"</tbody></table></div></div></div>");
 }
 
 async function pgSites() {
@@ -1025,6 +1068,7 @@ function goto(k) {
   if(k==="dashboard") pgDash();
   else if(k==="sites") pgSites();
   else if(k==="docsImport") pgDocsImport();
+  else if(k==="analytics") pgAnalytics();
   else if(k==="settings") pgSettings();
   else if(k==="profile") pgProfile();
   else if(M[k]) pgCRUD(k);
@@ -1107,11 +1151,14 @@ document.addEventListener("click",function(e){
   else if(act==="del"){if(confirm("Supprimer?"))dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}
   else if(act==="create")oCreate(mk);
   else if(act==="csv")csvExp(mk);
+  else if(act==="xlsimp")oXLS(mk);
   else if(act==="newsite")oSite(0);
   else if(act==="editsite")oSite(id);
   else if(act==="delsite")delSiteA(id);
   else if(act==="dldoc")downloadDoc(id);
   else if(act==="deldoc"){if(confirm("Supprimer?"))dDoc(id).then(function(){toast("Supprime");pgDocsImport();});}
+  else if(act==="previewdoc")previewDoc(id);
+  else if(act==="printdoc")printDoc(id);
 });
 
 // ================================================================
@@ -1169,6 +1216,324 @@ document.addEventListener("click",function(e){var np=document.getElementById("np
   document.getElementById("splash").style.display="none";
   document.getElementById("auth").style.display="flex";
 })();
+
+// ================================================================
+// ANALYTICS & KPIs (async cloud version)
+// ================================================================
+async function pgAnalytics() {
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement analytics...</p></div>');
+
+  // Load all modules in parallel
+  var mods = ["incidents","actions","ppe","fire","vehicles","employees","nc","training","audits","risks","environment"];
+  var c = {};
+  await Promise.all(mods.map(async function(k){ c[k] = await gRecs(k); }));
+
+  var inc=c.incidents, act=c.actions, ppe=c.ppe, fire=c.fire;
+  var veh=c.vehicles, emp=c.employees, nc=c.nc, train=c.training;
+  var audits=c.audits, risks=c.risks, env=c.environment;
+
+  var tfr=inc.filter(function(i){return i.type&&i.type.indexOf("Accident")>=0;}).length;
+  var ttr=inc.reduce(function(s,i){return s+(parseFloat(i.lostDays)||0);},0);
+  var actD=act.filter(function(a){return a.status==="COMPLETED";}).length, actT=act.length;
+  var actR=actT?Math.round(actD/actT*100):0;
+  var ncO=nc.filter(function(n){return n.status==="OPEN";}).length;
+  var ncC=nc.filter(function(n){return n.status==="CLOSED";}).length;
+  var ppeO=ppe.filter(function(p){return p.status==="VALIDE";}).length, ppeT=ppe.length;
+  var ppeR=ppeT?Math.round(ppeO/ppeT*100):0;
+  var fOk=fire.filter(function(f){return f.status==="OK";}).length, fT=fire.length;
+  var fR=fT?Math.round(fOk/fT*100):0;
+  var rC=risks.filter(function(r){return r.level==="CRITICAL";}).length;
+  var rH=risks.filter(function(r){return r.level==="HIGH";}).length;
+  var rM=risks.filter(function(r){return r.level==="MEDIUM";}).length;
+  var rL=risks.filter(function(r){return r.level==="LOW";}).length;
+  var aa=audits.filter(function(a){return parseFloat(a.score)>0;});
+  var auditAvg=aa.length?Math.round(aa.reduce(function(s,a){return s+parseFloat(a.score||0);},0)/aa.length):0;
+  var empA=emp.filter(function(e){return e.status==="ACTIVE";}).length;
+  var medOk=emp.filter(function(e){var d=dl(e.nextMedical);return d!==null&&d>0;}).length;
+  var medR=empA?Math.round(medOk/empA*100):0;
+  var trD=train.filter(function(t){return t.status==="COMPLETED";}).length;
+  var trT=train.length; var trR=trT?Math.round(trD/trT*100):0;
+
+  // Vehicle docs
+  var vExp=0,vWarn=0,vOk=0;
+  var vflds=["licenseExpiry","insuranceExpiry","technicalExpiry","oilChangeExpiry","transportCardExpiry"];
+  veh.forEach(function(v){vflds.forEach(function(f){var d=dl(v[f]);if(d===null)return;if(d<0)vExp++;else if(d<=30)vWarn++;else vOk++;});});
+
+  // Env data
+  var envE=env.filter(function(e){return e.type&&e.type.indexOf("nergie")>=0;});
+  var envW=env.filter(function(e){return e.type&&e.type.toLowerCase().indexOf("eau")>=0;});
+  var envC=env.filter(function(e){return e.type&&e.type.indexOf("CO")>=0;});
+  var totE=envE.reduce(function(s,d){return s+(parseFloat(d.value)||0);},0);
+  var totW=envW.reduce(function(s,d){return s+(parseFloat(d.value)||0);},0);
+  var totC=envC.reduce(function(s,d){return s+(parseFloat(d.value)||0);},0);
+
+  function kpi(l,v,u,c2,detail) {
+    return '<div class="kpi"><div style="position:absolute;top:-12px;right:-12px;width:54px;height:54px;border-radius:50%;background:'+c2+'15"></div><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;margin:0 0 4px">'+l+'</p><div style="display:flex;align-items:baseline;gap:4px"><h2 style="font-size:26px;font-weight:900;margin:0;color:'+c2+'">'+v+'</h2><span style="font-size:13px;color:#6b6f96">'+u+'</span></div>'+(detail?'<p style="font-size:11px;color:#6b6f96;margin:4px 0 0">'+detail+'</p>':'')+'</div>';
+  }
+  function bar(items) {
+    if(!items.length) return '<p style="color:#6b6f96;font-size:12px">Aucune donnee</p>';
+    var mx=Math.max.apply(null,items.map(function(i){return i.v;}));
+    return items.map(function(item){
+      var pct=mx>0?Math.round(item.v/mx*100):0;
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="width:90px;font-size:11px;color:#6b6f96;text-align:right;flex-shrink:0">'+item.l+'</span><div style="flex:1;height:18px;background:#1a1d2b;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+item.c+';border-radius:4px;display:flex;align-items:center;padding-left:5px">'+(item.v>0?'<span style="font-size:10px;font-weight:700;color:#fff">'+item.v+'</span>':'')+'</div></div></div>';
+    }).join('');
+  }
+  function sparkBar(items,colorFn) {
+    if(!items.length) return '<p style="color:#6b6f96;font-size:12px">Saisir dans Environnement</p>';
+    var mx=Math.max.apply(null,items.map(function(d){return parseFloat(d.value)||0;}));
+    return items.slice(-8).map(function(d){
+      var v=parseFloat(d.value)||0; var pct=mx>0?Math.round(v/mx*100):0; var c2=colorFn(v,mx);
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:80px;font-size:10px;color:#6b6f96;flex-shrink:0">'+xe(d.period||d.date||'')+'</span><div style="flex:1;height:16px;background:#1a1d2b;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+c2+';border-radius:3px"></div></div><span style="width:60px;font-size:11px;font-weight:700;text-align:right;flex-shrink:0">'+v+' '+xe(d.unit||'')+'</span></div>';
+    }).join('');
+  }
+  function prog(pct,lbl) {
+    var c2=pct>=80?'#22c55e':pct>=60?'#f59e0b':'#ef4444';
+    return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px"><span>'+lbl+'</span><span style="font-weight:700;color:'+c2+'">'+pct+'%</span></div><div style="height:8px;background:#232640;border-radius:4px"><div style="height:100%;width:'+pct+'%;background:'+c2+';border-radius:4px"></div></div></div>';
+  }
+
+  // Conformity per norm
+  var norms=[{id:'ISO 45001',l:'ISO 45001',sub:'Sante & Securite',ico:'&#129730;'},{id:'ISO 14001',l:'ISO 14001',sub:'Environnement',ico:'&#127807;'},{id:'ISO 9001',l:'ISO 9001',sub:'Qualite',ico:'&#9989;'},{id:'Code du Travail CI',l:'Code Travail CI',sub:'Reglementation CI',ico:'&#9878;'}];
+  var confCards=norms.map(function(n){
+    var sa=audits.filter(function(a){return a.referential===n.id&&parseFloat(a.score)>0;});
+    var avg=sa.length?Math.round(sa.reduce(function(s,a){return s+parseFloat(a.score||0);},0)/sa.length):null;
+    var parts=[]; if(avg!==null)parts.push(avg);
+    if(actT)parts.push(Math.max(0,100-Math.round(ncO/(actT+1)*100)));
+    if(actT)parts.push(Math.round(actD/actT*100));
+    var score=parts.length?Math.min(100,Math.round(parts.reduce(function(s,v){return s+v;},0)/parts.length)):null;
+    var c2=score===null?'#6b6f96':score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
+    return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px"><div><div style="font-size:24px">'+n.ico+'</div><h3 style="font-size:15px;font-weight:800;margin:4px 0 0">'+n.l+'</h3><p style="font-size:11px;color:#6b6f96;margin:0">'+n.sub+'</p></div><div style="text-align:right"><p style="font-size:28px;font-weight:900;margin:0;color:'+c2+'">'+(score!==null?score+'%':'N/A')+'</p><p style="font-size:10px;color:#6b6f96;margin:0">Score global</p></div></div><div style="height:10px;background:#232640;border-radius:5px;margin-bottom:12px"><div style="height:100%;width:'+(score||0)+'%;background:'+c2+';border-radius:5px"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:#1a1d2b;border-radius:7px;padding:8px;text-align:center"><p style="margin:0;font-size:18px;font-weight:800;color:#4f6ef7">'+sa.length+'</p><p style="margin:0;font-size:10px;color:#6b6f96">Audits</p></div><div style="background:#1a1d2b;border-radius:7px;padding:8px;text-align:center"><p style="margin:0;font-size:18px;font-weight:800;color:'+(avg?'#22c55e':'#6b6f96')+'">'+(avg?avg+'%':'--')+'</p><p style="margin:0;font-size:10px;color:#6b6f96">Score moy.</p></div></div></div>';
+  }).join('');
+
+  put('<div class="fi"><div style="margin-bottom:16px"><h1 style="font-size:19px;font-weight:800;margin:0">Analytique et KPIs</h1><p style="color:#6b6f96;font-size:12px;margin:2px 0 0">Indicateurs calcules en temps reel depuis Supabase</p></div>'
+  +'<h2 style="font-size:12px;font-weight:700;margin:0 0 10px;color:#6b6f96;text-transform:uppercase;letter-spacing:.5px">KPIs Securite et Sante</h2>'
+  +'<div class="gkpi" style="margin-bottom:20px">'
+    +kpi("Accidents",tfr,"",tfr===0?"#22c55e":"#ef4444",inc.length+" incidents total")
+    +kpi("Jours perdus",ttr,"j","#f59e0b","Arrets de travail")
+    +kpi("Actions clot.",actR,"%",actR>=80?"#22c55e":actR>=60?"#f59e0b":"#ef4444",actD+"/"+actT)
+    +kpi("NC resolues",ncC,"",ncO===0?"#22c55e":"#f59e0b",ncO+" ouvertes")
+    +kpi("EPI conformes",ppeR,"%",ppeR>=80?"#22c55e":"#ef4444",ppeO+"/"+ppeT)
+    +kpi("Extincteurs OK",fR,"%",fR===100?"#22c55e":"#ef4444",fOk+"/"+fT)
+    +kpi("Score audits",auditAvg,"%",auditAvg>=80?"#22c55e":auditAvg>=60?"#f59e0b":"#ef4444",audits.length+" audits")
+    +kpi("Visites med.",medR,"%",medR>=80?"#22c55e":"#f59e0b",medOk+"/"+empA+" actifs")
+  +'</div>'
+  +'<div class="gcards" style="margin-bottom:20px">'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 14px">Incidents par gravite</h3>'+bar([{l:"CRITICAL",v:inc.filter(function(i){return i.severity==="CRITICAL";}).length,c:"#dc2626"},{l:"HIGH",v:inc.filter(function(i){return i.severity==="HIGH";}).length,c:"#ea580c"},{l:"MEDIUM",v:inc.filter(function(i){return i.severity==="MEDIUM";}).length,c:"#d97706"},{l:"LOW",v:inc.filter(function(i){return i.severity==="LOW";}).length,c:"#16a34a"}])+'<p style="font-size:11px;color:#6b6f96;margin-top:8px">Total: '+inc.length+' incidents</p></div>'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 14px">Risques par niveau</h3>'+bar([{l:"CRITICAL",v:rC,c:"#dc2626"},{l:"HIGH",v:rH,c:"#ea580c"},{l:"MEDIUM",v:rM,c:"#d97706"},{l:"LOW",v:rL,c:"#16a34a"}])+'<p style="font-size:11px;color:#6b6f96;margin-top:8px">'+risks.length+' risques DUER</p></div>'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 14px">Documents vehicules</h3>'+bar([{l:"Expires",v:vExp,c:"#ef4444"},{l:"< 30 jours",v:vWarn,c:"#f59e0b"},{l:"OK",v:vOk,c:"#22c55e"}])+'<p style="font-size:11px;color:#6b6f96;margin-top:8px">'+veh.length+' vehicule(s) x 5 docs</p></div>'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 14px">Formations</h3>'+bar([{l:"Planifiees",v:train.filter(function(t){return t.status==="PLANNED";}).length,c:"#3b82f6"},{l:"En cours",v:train.filter(function(t){return t.status==="IN PROGRESS";}).length,c:"#f59e0b"},{l:"Terminees",v:trD,c:"#22c55e"}])+prog(trR,"Taux de completion")+'</div>'
+  +'</div>'
+  +'<h2 style="font-size:12px;font-weight:700;margin:0 0 10px;color:#6b6f96;text-transform:uppercase;letter-spacing:.5px">Conformite par referentiel</h2>'
+  +'<div class="gcards" style="margin-bottom:20px">'+confCards+'</div>'
+  +'<h2 style="font-size:12px;font-weight:700;margin:0 0 10px;color:#6b6f96;text-transform:uppercase;letter-spacing:.5px">Tendances Environnementales</h2>'
+  +'<div class="gcards" style="margin-bottom:20px">'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Energie electrique (kWh/MWh)</h3>'+sparkBar(envE,function(v,mx){return v>mx*0.85?"#ef4444":v>mx*0.65?"#f59e0b":"#22c55e";})+(totE>0?'<div style="margin-top:8px;padding:8px;background:#1a1d2b;border-radius:6px;display:flex;justify-content:space-between"><span style="font-size:11px;color:#6b6f96">Total cumule</span><span style="font-size:13px;font-weight:700;color:#4f6ef7">'+Math.round(totE)+'</span></div>':'')+'</div>'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Consommation eau (m3)</h3>'+sparkBar(envW,function(v,mx){return v>mx*0.85?"#ef4444":v>mx*0.65?"#f59e0b":"#38bdf8";})+(totW>0?'<div style="margin-top:8px;padding:8px;background:#1a1d2b;border-radius:6px;display:flex;justify-content:space-between"><span style="font-size:11px;color:#6b6f96">Total cumule</span><span style="font-size:13px;font-weight:700;color:#38bdf8">'+Math.round(totW)+' m3</span></div>':'')+'</div>'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Emissions CO2 (tCO2)</h3>'+sparkBar(envC,function(v,mx){return v>mx*0.85?"#ef4444":v>mx*0.65?"#f59e0b":"#22c55e";})+(totC>0?'<div style="margin-top:8px;padding:8px;background:#1a1d2b;border-radius:6px;display:flex;justify-content:space-between"><span style="font-size:11px;color:#6b6f96">Total cumule</span><span style="font-size:13px;font-weight:700;color:#f59e0b">'+Math.round(totC)+' tCO2</span></div>':'')+'</div>'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Tous indicateurs env.</h3>'+bar(env.reduce(function(a,e){var t=(e.type||"Autre").substring(0,14);var ex=a.find(function(x){return x.l===t;});if(ex)ex.v+=parseFloat(e.value)||0;else a.push({l:t,v:parseFloat(e.value)||0,c:"#22c55e"});return a;},[])||[])+'<p style="font-size:11px;color:#6b6f96;margin-top:6px">'+env.length+' indicateurs</p></div>'
+  +'</div></div>');
+}
+
+// ================================================================
+// EXCEL / CSV IMPORT (async cloud version)
+// ================================================================
+var pendImp = {};
+
+function oXLS(mk) {
+  S.mkey = "__xls__"+mk; S.eid = null;
+  document.getElementById("mtit").textContent = "Importer Excel/CSV → "+M[mk].l;
+  document.getElementById("mmsg").style.display = "none";
+  document.getElementById("mbtns").style.display = "none";
+  var cols = M[mk].c.map(function(c){return c.l;}).join(", ");
+  document.getElementById("mflds").innerHTML = '<div style="grid-column:1/-1">'
+    +'<div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:9px;padding:11px 14px;font-size:13px;color:#4f6ef7;margin-bottom:14px">'
+    +'<strong>Colonnes du module:</strong> '+xe(cols)+'<br/><br/>'
+    +'Votre fichier CSV doit avoir les en-tetes en 1ere ligne.<br/>'
+    +'<strong>Excel → CSV:</strong> Fichier → Enregistrer sous → CSV (separateur ;)</div>'
+    +'<div id="xls-dz" class="dz">'
+    +'<div style="font-size:36px;margin-bottom:8px">&#128202;</div>'
+    +'<p style="font-weight:700;font-size:14px;margin:0">Choisir fichier Excel ou CSV</p>'
+    +'<p style="font-size:12px;color:#6b6f96;margin:5px 0 0">.xlsx, .xls, .csv acceptes</p>'
+    +'<input type="file" id="xls-fi" accept=".csv,.xlsx,.xls" style="display:none"/>'
+    +'</div>'
+    +'<div id="xls-prev" style="margin-top:12px"></div></div>';
+  showMod();
+  setTimeout(function(){
+    var dz=document.getElementById("xls-dz"); var fi=document.getElementById("xls-fi");
+    if(dz&&fi){
+      dz.onclick=function(){fi.click();};
+      fi.onchange=function(){if(fi.files.length) rdXLS(fi,mk);};
+    }
+  },100);
+}
+
+function rdXLS(inp, mk) {
+  var file=inp.files[0]; if(!file) return;
+  var prev=document.getElementById("xls-prev"); if(!prev) return;
+  prev.innerHTML='<p style="color:#6b6f96;font-size:13px">Lecture du fichier...</p>';
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var text=e.target.result;
+    var sep=text.indexOf(";")>text.indexOf(",")?";":",";
+    var lines=text.replace(/\r/g,"").split("\n").filter(function(l){return l.trim();});
+    if(!lines.length){prev.innerHTML='<div class="aerr">Fichier vide.</div>';return;}
+    var headers=lines[0].split(sep).map(function(h){return h.replace(/^"|"$/g,"").trim();});
+    var rows=[];
+    for(var i=1;i<lines.length&&i<=5000;i++){
+      if(!lines[i].trim())continue;
+      var vals=lines[i].split(sep).map(function(v){return v.replace(/^"|"$/g,"").trim();});
+      var obj={}; headers.forEach(function(h,idx){obj[h]=vals[idx]||"";});
+      rows.push(obj);
+    }
+    pendImp[mk]={headers:headers,rows:rows,mapping:{}};
+    var fields=typeof M[mk].f==="function"?M[mk].f():M[mk].f;
+    // Auto-map columns
+    fields.forEach(function(f){
+      var fk=f.k.toLowerCase();
+      headers.forEach(function(h){
+        var hl=h.toLowerCase().replace(/[^a-z0-9]/g,"");
+        var fkc=fk.replace(/[^a-z0-9]/g,"");
+        if(hl===fkc||hl.indexOf(fkc)>=0||fkc.indexOf(hl)>=0) pendImp[mk].mapping[f.k]=h;
+      });
+    });
+    showXLSMapping(mk,fields,headers,rows);
+  };
+  reader.readAsText(file,"UTF-8");
+}
+
+function showXLSMapping(mk, fields, headers, rows) {
+  var prev=document.getElementById("xls-prev"); if(!prev) return;
+  var h='<div class="aok">'+rows.length+' ligne(s) detectee(s). Faites correspondre les colonnes:</div>';
+  h+='<div class="g2" style="margin-bottom:14px">';
+  fields.slice(0,20).forEach(function(f){
+    var cur=pendImp[mk]&&pendImp[mk].mapping[f.k]||"";
+    var opts=headers.map(function(hdr){return '<option value="'+xe(hdr)+'"'+(hdr===cur?" selected":"")+'>'+xe(hdr)+'</option>';}).join("");
+    h+='<div class="f"><label>'+f.l+'</label><select onchange="if(pendImp[\''+mk+'\'])pendImp[\''+mk+'\'].mapping[\''+f.k+'\']=this.value"><option value="">-- Ignorer --</option>'+opts+'</select></div>';
+  });
+  h+='</div><button onclick="doImpRows(\''+mk+'\')" class="btn bp" style="width:100%;justify-content:center">&#8679; Importer '+rows.length+' enregistrement(s)</button>';
+  prev.innerHTML=h;
+  document.getElementById("mbtns").style.display="none";
+}
+
+async function doImpRows(mk) {
+  var imp=pendImp[mk]; if(!imp) return;
+  var fields=typeof M[mk].f==="function"?M[mk].f():M[mk].f;
+  var count=0; var errors=0;
+  var btn=document.querySelector('#xls-prev button');
+  if(btn){btn.disabled=true;btn.textContent="Import en cours...";}
+  for(var i=0;i<imp.rows.length;i++){
+    var row=imp.rows[i]; var rec={};
+    fields.forEach(function(f){var col=imp.mapping[f.k];if(col&&row[col]!==undefined)rec[f.k]=row[col];});
+    if(Object.values(rec).some(function(v){return v&&String(v).trim();})){
+      var r=await sRec(mk,rec,null);
+      if(r&&r.err)errors++;else count++;
+    }
+  }
+  closeMod();
+  if(errors>0)toast(count+" importe(s), "+errors+" erreur(s)",true);
+  else toast(count+" enregistrement(s) importe(s) sur le serveur!");
+  await pgCRUD(mk);
+}
+
+// ================================================================
+// PDF VIEWER & PRINTER (updated pgDocsImport)
+// ================================================================
+async function pgDocsImport() {
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  var docs=await gDocs();
+  var rows=docs.map(function(doc){
+    var ico={pdf:"PDF",doc:"DOC",docx:"DOCX",xls:"XLS",xlsx:"XLSX",png:"IMG",jpg:"IMG",jpeg:"IMG"}[doc.ext]||"FILE";
+    var canPreview=["pdf","png","jpg","jpeg"].indexOf(doc.ext||"")>=0;
+    return '<tr>'
+      +'<td style="font-weight:600">'+ico+' '+xe(doc.name)+'</td>'
+      +'<td>'+xe((doc.ext||"").toUpperCase())+'</td>'
+      +'<td>'+xe(doc.size||"")+'</td>'
+      +'<td>'+xe(doc.date||"")+'</td>'
+      +'<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
+      +(canPreview?'<button data-action="previewdoc" data-id="'+doc.id+'" style="background:#4f6ef715;border:1px solid #4f6ef730;border-radius:6px;padding:4px 8px;cursor:pointer;color:#4f6ef7;font-size:11px;font-weight:600;font-family:inherit">Voir</button>':'')
+      +'<button data-action="printdoc" data-id="'+doc.id+'" style="background:#22c55e15;border:1px solid #22c55e30;border-radius:6px;padding:4px 8px;cursor:pointer;color:#22c55e;font-size:11px;font-weight:600;font-family:inherit">Imprimer</button>'
+      +'<button data-action="dldoc" data-id="'+doc.id+'" style="background:#f59e0b15;border:1px solid #f59e0b30;border-radius:6px;padding:4px 8px;cursor:pointer;color:#f59e0b;font-size:11px;font-weight:600;font-family:inherit">Telecharger</button>'
+      +'<button data-action="deldoc" data-id="'+doc.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:4px 8px;cursor:pointer;color:#ef4444;display:flex;align-items:center">'+ic("del",12)+'</button>'
+      +'</div></td></tr>';
+  }).join("");
+
+  put('<div class="fi">'
+    +'<div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic("pdf",22)+'</span>'
+    +'<div><h1>Import de documents</h1><p>'+docs.length+' document(s) - stockes sur Supabase</p></div></div></div>'
+    +'<div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:9px;padding:11px 14px;font-size:13px;color:#4f6ef7;margin-bottom:14px">'
+    +'Importez PDF, Word, Excel, Images. Stockes sur votre serveur Supabase.<br/>'
+    +'<strong>Voir</strong> = apercu dans le navigateur | <strong>Imprimer</strong> = impression directe</div>'
+    +'<div id="dz-area" class="dz">'
+    +'<div style="font-size:40px;margin-bottom:10px">&#128194;</div>'
+    +'<p style="font-weight:700;font-size:15px;margin:0">Glissez vos fichiers ici ou cliquez</p>'
+    +'<p style="font-size:12px;color:#6b6f96;margin:5px 0 0">PDF, Word (.docx), Excel (.xlsx), Images</p>'
+    +'<input type="file" id="fi-doc" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" style="display:none" onchange="handleDocFiles(this.files)"/>'
+    +'</div>'
+    +(docs.length
+      ?'<div class="card0"><div class="tw"><table>'
+        +'<thead><tr><th>Nom</th><th>Type</th><th>Taille</th><th>Importe le</th><th style="min-width:240px">Actions</th></tr></thead>'
+        +'<tbody>'+rows+'</tbody></table></div></div>'
+      :'<p style="text-align:center;color:#6b6f96;padding:20px">Aucun document - importez votre premier fichier</p>')
+    +'</div>');
+
+  var dz=document.getElementById("dz-area");
+  if(dz){
+    dz.onclick=function(){var f=document.getElementById("fi-doc");if(f)f.click();};
+    dz.ondragover=function(e){e.preventDefault();dz.classList.add("drag");};
+    dz.ondragleave=function(){dz.classList.remove("drag");};
+    dz.ondrop=function(e){e.preventDefault();dz.classList.remove("drag");handleDocFiles(e.dataTransfer.files);};
+  }
+}
+
+async function previewDoc(id) {
+  toast("Chargement du document...");
+  var r=await sbFrom("docs","GET",null,"id=eq."+id+"&select=name,ext,data");
+  if(r.error||!r.data||!r.data[0]){toast("Erreur chargement",true);return;}
+  var doc=r.data[0];
+  // Open in new tab or show in modal
+  if(doc.ext==="pdf"){
+    // For PDF - open in new tab
+    var win=window.open("","_blank");
+    win.document.write('<html><head><title>'+xe(doc.name)+'</title></head><body style="margin:0"><embed src="'+doc.data+'" width="100%" height="100%" type="application/pdf"/></body></html>');
+    win.document.close();
+  } else if(["png","jpg","jpeg","gif","webp"].indexOf(doc.ext)>=0){
+    // For images - show in modal
+    document.getElementById("mtit").textContent = doc.name;
+    document.getElementById("mbtns").style.display = "none";
+    document.getElementById("mmsg").style.display = "none";
+    document.getElementById("mflds").innerHTML = '<div style="grid-column:1/-1;text-align:center">'
+      +'<img src="'+doc.data+'" style="max-width:100%;max-height:60vh;border-radius:8px"/>'
+      +'<div style="margin-top:12px;display:flex;gap:8px;justify-content:center">'
+      +'<button onclick="printDoc(\''+id+'\')" class="btn bp">Imprimer</button>'
+      +'<button onclick="downloadDoc(\''+id+'\')" class="btn bg0">Telecharger</button>'
+      +'<button onclick="closeMod()" class="btn bg0">Fermer</button>'
+      +'</div></div>';
+    S.mkey="__preview__"; showMod();
+  } else {
+    // Other files - offer download
+    toast("Apercu non disponible pour ce type. Telechargement...");
+    downloadDoc(id);
+  }
+}
+
+async function printDoc(id) {
+  toast("Preparation impression...");
+  var r=await sbFrom("docs","GET",null,"id=eq."+id+"&select=name,ext,data");
+  if(r.error||!r.data||!r.data[0]){toast("Erreur",true);return;}
+  var doc=r.data[0];
+  if(doc.ext==="pdf"){
+    var win=window.open("","_blank");
+    win.document.write('<html><head><title>'+xe(doc.name)+'</title><style>body{margin:0}embed{width:100vw;height:100vh}</style></head><body><embed src="'+doc.data+'" type="application/pdf"/><script>setTimeout(function(){window.print();},800);<\/script></body></html>');
+    win.document.close();
+  } else if(["png","jpg","jpeg","gif"].indexOf(doc.ext)>=0){
+    var win2=window.open("","_blank");
+    win2.document.write('<html><head><title>'+xe(doc.name)+'</title><style>@media print{body{margin:0}img{max-width:100%;page-break-inside:avoid}}</style></head><body><img src="'+doc.data+'" style="max-width:100%"/><script>setTimeout(function(){window.print();window.close();},500);<\/script></body></html>');
+    win2.document.close();
+  } else {
+    toast("Impression disponible uniquement pour PDF et images",true);
+  }
+}
+
 </script>
 </body>
 </html>
+<!-- PATCH INJECTION POINT - will be removed by next step -->
