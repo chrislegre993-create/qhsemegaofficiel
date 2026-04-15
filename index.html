@@ -412,6 +412,21 @@ function saveConfigLocal(url, key) {
 var SB = null; // Supabase config {url, key}
 var SB_SESSION = null; // current session
 
+// Safe user ID getter - handles different Supabase session structures
+function getUID() {
+  if (!SB_SESSION) return null;
+  // Supabase v2: session.user.id
+  if (SB_SESSION.user && SB_SESSION.user.id) return SB_SESSION.user.id;
+  // Alternative: user_id at root
+  if (SB_SESSION.user_id) return SB_SESSION.user_id;
+  // Decode JWT sub claim
+  try {
+    var payload = SB_SESSION.access_token.split('.')[1];
+    var decoded = JSON.parse(atob(payload));
+    return decoded.sub || null;
+  } catch(e) { return null; }
+}
+
 function sbInit(url, key) {
   SB = {url: url.replace(/\/$/, ""), key: key};
 }
@@ -492,7 +507,9 @@ var cache = {}; // local cache for speed
 
 async function gRecs(mod) {
   if (cache[mod]) return cache[mod];
-  var r = await sbFrom("records", "GET", null, "module=eq."+mod+"&user_id=eq."+SB_SESSION.user.id+"&order=created_at.desc", null);
+  var uid = getUID();
+  if (!uid) { console.error("gRecs: no user session for module", mod); return []; }
+  var r = await sbFrom("records", "GET", null, "module=eq."+mod+"&user_id=eq."+uid+"&order=created_at.desc", null);
   if (r.error) { console.error("gRecs error:", r.error); return []; }
   var rows = (r.data || []).map(function(row) {
     var d = row.data || {};
@@ -509,9 +526,9 @@ async function sRec(mod, data, id) {
   if (id) {
     // PATCH: only update the data field, not user_id (avoids RLS conflict)
     var patchRow = {data: data, updated_at: new Date().toISOString()};
-    r = await sbFrom("records", "PATCH", patchRow, "id=eq."+id+"&user_id=eq."+SB_SESSION.user.id);
+    r = await sbFrom("records", "PATCH", patchRow, "id=eq."+id+"&user_id=eq."+getUID());
   } else {
-    var row = {user_id: SB_SESSION.user.id, module: mod, data: data};
+    var row = {user_id: getUID(), module: mod, data: data};
     // Generate ref
     var existing = await gRecs(mod);
     var pfx = mod.slice(0,3).toUpperCase();
@@ -540,14 +557,14 @@ async function dRec(id) {
 }
 
 async function gSites() {
-  var r = await sbFrom("sites", "GET", null, "user_id=eq."+SB_SESSION.user.id+"&order=name.asc");
+  var r = await sbFrom("sites", "GET", null, "user_id=eq."+getUID()+"&order=name.asc");
   if (r.error) return [];
   return r.data || [];
 }
 
 async function saveSite(s) {
   syncStart();
-  var row = {user_id: SB_SESSION.user.id, name: s.name, city: s.city, country: s.country, address: s.address, type: s.type};
+  var row = {user_id: getUID(), name: s.name, city: s.city, country: s.country, address: s.address, type: s.type};
   var r;
   if (s.id && typeof s.id === "number" && s.id > 0) {
     r = await sbFrom("sites", "PATCH", row, "id=eq."+s.id);
@@ -567,14 +584,14 @@ async function delSite(id) {
 }
 
 async function gDocs() {
-  var r = await sbFrom("docs", "GET", null, "user_id=eq."+SB_SESSION.user.id+"&order=created_at.desc&select=id,name,ext,size,date,created_at");
+  var r = await sbFrom("docs", "GET", null, "user_id=eq."+getUID()+"&order=created_at.desc&select=id,name,ext,size,date,created_at");
   if (r.error) return [];
   return r.data || [];
 }
 
 async function sDoc(doc) {
   syncStart();
-  doc.user_id = SB_SESSION.user.id;
+  doc.user_id = getUID();
   var r = await sbFrom("docs", "POST", doc, null);
   syncEnd();
   if (r.error) { toast("Fichier trop volumineux ou erreur", true); return null; }
@@ -811,13 +828,17 @@ async function forgotPwd() {
 
 async function startApp() {
   document.getElementById("auth").style.display = "none";
-  document.getElementById("splash").style.display = "flex";
-  document.getElementById("app").style.display = "none";
   document.getElementById("fab").style.display = "flex";
   if (window.innerWidth>=768) document.getElementById("side").className="on";
-  S.user = SB_SESSION.user || {};
+  var uid = getUID();
+  S.user = {
+    id: uid,
+    email: (SB_SESSION.user && SB_SESSION.user.email) || '',
+    name: '',
+    company: ''
+  };
   // Load user profile
-  var p = await sbFrom("profiles","GET",null,"id=eq."+S.user.id);
+  var p = uid ? await sbFrom("profiles","GET",null,"id=eq."+uid) : {data:null,error:null};
   if (p.data && p.data[0]) {
     S.user.name = p.data[0].name || S.user.email;
     S.user.company = p.data[0].company || "";
@@ -828,10 +849,15 @@ async function startApp() {
   document.getElementById("av").textContent = (S.user.name||"?").charAt(0).toUpperCase();
   if (S.user.company) document.getElementById("sco").textContent = S.user.company;
   S.sites = await gSites();
-  document.getElementById("splash").style.display = "none";
   document.getElementById("app").style.display = "flex";
+  document.getElementById("splash").style.display = "none";
   mkNav();
-  goto("dashboard");
+  try {
+    await goto("dashboard");
+  } catch(e) {
+    console.error("Dashboard load error:", e);
+    put('<div style="padding:32px;text-align:center"><p style="color:#ef4444">Erreur chargement: '+String(e.message||e)+'</p></div>');
+  }
 }
 
 async function doLogout() {
@@ -876,6 +902,7 @@ var PI = {
   check:'<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',
   moon:'<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>',
   sun:'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>',
+  warn:'<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>',
   analytics:'<path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/>',
   upload:'<path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>',
   xls:'<path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 2l4 4h-4V4zM8 15l1.5-2.5L11 15l1.5-2.5L14 15h-2l-.5-1-.5 1zm-2-5h8v1H6z"/>'
@@ -898,7 +925,7 @@ function mkNav() {
 // ================================================================
 async function pgDash() {
   put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
-  var mods=["incidents","actions","risks","nc","ppe","fire","vehicles","meetings"];
+  var mods=["incidents","actions","risks","nc","ppe","fire","vehicles","meetings","employees","training"];
   var c={};
   await Promise.all(mods.map(async function(k){c[k]=await gRecs(k);}));
 
@@ -909,18 +936,30 @@ async function pgDash() {
   var eP=c.ppe.filter(function(r){return r.status==="EXPIRE";}).length;
   var nF=c.fire.filter(function(r){return r.status==="NON CONFORME";}).length;
   var planM=c.meetings.filter(function(r){return r.status==="PLANNED";}).length;
+  var nbEmp=c.employees.length;
+  var empActif=c.employees.filter(function(e){return e.status==="ACTIVE";}).length;
+  var nbVeh=c.vehicles.length;
+  var vehActif=c.vehicles.filter(function(v){return v.status==="ACTIVE";}).length;
+  var nbFire=c.fire.length;
+  var fireOk=c.fire.filter(function(f){return f.status==="OK";}).length;
+  // Update notification badge from cached data
+  var allAlerts=computeAlerts();
+  var cnt=document.getElementById("ncnt");
+  if(cnt){cnt.textContent=allAlerts.length;cnt.style.display=allAlerts.length?"flex":"none";}
 
   var kpis=[
-    {l:"Incidents ouverts",v:oI,i:"incidents",c:"#ef4444",mod:"incidents"},
-    {l:"Risques critiques",v:cR,i:"risks",c:"#f59e0b",mod:"risks"},
-    {l:"Actions en retard",v:oA,i:"actions",c:"#7c5cf6",mod:"actions"},
-    {l:"NC ouvertes",v:oN,i:"nc",c:"#ec4899",mod:"nc"},
-    {l:"EPI expires",v:eP,i:"ppe",c:"#ef4444",mod:"ppe"},
-    {l:"Extincteurs NC",v:nF,i:"fire",c:"#f97316",mod:"fire"},
-    {l:"Reunions planifiees",v:planM,i:"meeting",c:"#22c55e",mod:"meetings"},
-    {l:"Sites configures",v:S.sites.length,i:"site",c:"#38bdf8",mod:"sites"},
+    {l:"Incidents ouverts",v:oI,i:"incidents",c:"#ef4444",mod:"incidents",detail:""},
+    {l:"Risques critiques",v:cR,i:"risks",c:"#f59e0b",mod:"risks",detail:""},
+    {l:"Actions en retard",v:oA,i:"actions",c:"#7c5cf6",mod:"actions",detail:""},
+    {l:"NC ouvertes",v:oN,i:"nc",c:"#ec4899",mod:"nc",detail:""},
+    {l:"EPI expires",v:eP,i:"ppe",c:"#ef4444",mod:"ppe",detail:""},
+    {l:"Extincteurs",v:nbFire,i:"fire",c:nF>0?"#ef4444":"#22c55e",mod:"fire",detail:fireOk+"/"+nbFire+" conformes"},
+    {l:"Employes",v:nbEmp,i:"employee",c:"#4f6ef7",mod:"employees",detail:empActif+" actifs"},
+    {l:"Vehicules",v:nbVeh,i:"vehicle",c:"#38bdf8",mod:"vehicles",detail:vehActif+" actifs"},
+    {l:"Reunions planifiees",v:planM,i:"meeting",c:"#22c55e",mod:"meetings",detail:""},
+    {l:"Alertes actives",v:allAlerts.length,i:"warn",c:allAlerts.length>0?"#ef4444":"#22c55e",mod:"dashboard",detail:allAlerts.length?"Voir cloche en haut":"Tout est OK"},
   ];
-  var kH=kpis.map(function(k){return '<div class="kpi" onclick="goto(\''+k.mod+'\')"><div style="position:absolute;top:-12px;right:-12px;width:54px;height:54px;border-radius:50%;background:'+k.c+'15"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;margin:0">'+k.l+'</p><h2 style="font-size:24px;font-weight:800;margin:2px 0">'+k.v+'</h2></div><div style="color:'+k.c+';background:'+k.c+'22;padding:7px;border-radius:8px">'+ic(k.i,18)+"</div></div></div>";}).join("");
+  var kH=kpis.map(function(k){return '<div class="kpi" onclick="goto(\''+k.mod+'\')"><div style="position:absolute;top:-12px;right:-12px;width:54px;height:54px;border-radius:50%;background:'+k.c+'15"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;margin:0">'+k.l+'</p><h2 style="font-size:24px;font-weight:800;margin:2px 0">'+k.v+'</h2>'+(k.detail?'<p style="font-size:10px;color:#6b6f96;margin:2px 0 0">'+k.detail+'</p>':'')+'</div><div style="color:'+k.c+';background:'+k.c+'22;padding:7px;border-radius:8px">'+ic(k.i,18)+"</div></div></div>";}).join("");
 
   // Vehicles docs
   var vDocH="";
@@ -935,19 +974,64 @@ async function pgDash() {
 
   var sitesH=S.sites.length?S.sites.map(function(s){return '<div style="padding:5px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between"><div><p style="margin:0;font-size:12px;font-weight:600">'+xe(s.name)+"</p><p style=\"margin:0;font-size:10px;color:#6b6f96\">"+xe(s.city||"")+"</p></div></div>";}).join():'<p style="color:#6b6f96;font-size:13px">Aucun site</p>';
 
+  // Build alerts summary for dashboard
+    // Alerts summary built after put() to avoid quote nesting
+  var alertSummaryH = "";
+  // (injected into DOM after render)
   put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:19px;font-weight:800;margin:0">Tableau de bord</h1><p style="color:#6b6f96;font-size:12px;margin:2px 0 0">'+xe(S.user.name||"")+(S.user.company?" - "+xe(S.user.company):"")+'</p><div class="cloud-badge" style="margin-top:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>Donnees synchronisees sur Supabase</div><button onclick="testDB()" style="margin-top:6px;background:#232640;border:1px solid #4f6ef730;border-radius:6px;padding:4px 10px;color:#4f6ef7;font-size:11px;cursor:pointer;font-family:inherit">Tester la connexion BD</button></div><div class="gkpi">'+kH+'</div><div class="gcards"><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Vehicules - Documents</h3>'+vDocH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">NC ouvertes</h3>'+ncH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Mes sites</h3>'+sitesH+"</div></div></div>");
+  // Build alerts summary in DOM (avoids quote nesting)
+  if(allAlerts.length > 0) {
+    var dashEl = document.getElementById("pc");
+    var alertsDiv = document.createElement("div");
+    alertsDiv.style.cssText = "margin-bottom:14px";
+    var hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px";
+    var h3 = document.createElement("h3");
+    h3.style.cssText = "margin:0;font-size:13px;font-weight:700;color:#ef4444";
+    h3.textContent = "Alertes actives (" + allAlerts.length + ")";
+    var btn = document.createElement("button");
+    btn.style.cssText = "color:#4f6ef7;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit";
+    btn.textContent = "Voir tout";
+    btn.onclick = togNotif;
+    hdr.appendChild(h3); hdr.appendChild(btn);
+    alertsDiv.appendChild(hdr);
+    allAlerts.slice(0,6).forEach(function(a){
+      var row = document.createElement("div");
+      row.style.cssText = "background:#ef444408;border:1px solid #ef444418;border-radius:8px;padding:8px 12px;margin-bottom:5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center";
+      row.onmouseover = function(){row.style.background="#ef444415";};
+      row.onmouseout = function(){row.style.background="#ef444408";};
+      var mod = a.mod;
+      row.onclick = function(){goto(mod);};
+      var dLabel = a.days===null?"":a.days<0?"Expire":a.days===0?"Auj.":a.days+"j";
+      var left = document.createElement("div");
+      var tp = document.createElement("p");
+      tp.style.cssText = "margin:0;font-size:12px;font-weight:600;color:"+a.color;
+      tp.textContent = a.text;
+      var sp2 = document.createElement("p");
+      sp2.style.cssText = "margin:0;font-size:10px;color:#6b6f96";
+      sp2.textContent = a.sub||"";
+      left.appendChild(tp); left.appendChild(sp2);
+      row.appendChild(left);
+      if(dLabel){var badge2=document.createElement("span");badge2.style.cssText="font-size:11px;font-weight:700;color:"+a.color+";flex-shrink:0;margin-left:8px";badge2.textContent=dLabel;row.appendChild(badge2);}
+      alertsDiv.appendChild(row);
+    });
+    // Insert at top of fi div
+    var fiDiv = dashEl.querySelector(".fi");
+    if(fiDiv && fiDiv.firstChild) fiDiv.insertBefore(alertsDiv, fiDiv.firstChild);
+  }
+
 }
 
 async function testDB() {
   toast("Test en cours...");
   try {
     // Test 1: Insert
-    var testRow = {user_id: SB_SESSION.user.id, module: "__test__", data: {t: Date.now()}, ref: "TEST"};
+    var testRow = {user_id: getUID(), module: "__test__", data: {t: Date.now()}, ref: "TEST"};
     var ri = await sbFrom("records","POST",testRow,null);
     if (ri.error) { toast("ERREUR INSERT: " + (ri.error.message||ri.error.hint||JSON.stringify(ri.error).substring(0,80)), true); return; }
     var newId = ri.data && ri.data[0] && ri.data[0].id;
     // Test 2: Select
-    var rs = await sbFrom("records","GET",null,"module=eq.__test__&user_id=eq."+SB_SESSION.user.id);
+    var rs = await sbFrom("records","GET",null,"module=eq.__test__&user_id=eq."+getUID());
     if (rs.error || !rs.data || !rs.data.length) { toast("ERREUR SELECT: donnees non lisibles", true); return; }
     // Test 3: Delete
     if (newId) await sbFrom("records","DELETE",null,"id=eq."+newId);
@@ -1063,18 +1147,34 @@ async function savPro() {
 // ================================================================
 // GOTO
 // ================================================================
-function goto(k) {
+async function goto(k) {
   S.pg=k; S.search=""; closeSide(); mkNav();
   var n=NAV.find(function(n){return n.k===k;});
   document.getElementById("ttl").textContent=n?n.l:"Tableau de bord";
-  if(k==="dashboard") pgDash();
-  else if(k==="sites") pgSites();
-  else if(k==="docsImport") pgDocsImport();
-  else if(k==="analytics") pgAnalytics();
-  else if(k==="settings") pgSettings();
-  else if(k==="profile") pgProfile();
-  else if(M[k]) pgCRUD(k);
-  else put('<p style="padding:32px;text-align:center;color:#6b6f96">Page en developpement</p>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  try {
+    if(k==="dashboard") await pgDash();
+    else if(k==="sites") await pgSites();
+    else if(k==="docsImport") await pgDocsImport();
+    else if(k==="analytics") await pgAnalytics();
+    else if(k==="settings") pgSettings();
+    else if(k==="profile") pgProfile();
+    else if(M[k]) await pgCRUD(k);
+    else put('<p style="padding:32px;text-align:center;color:#6b6f96">Page en developpement</p>');
+  } catch(e) {
+    console.error("goto error for", k, e);
+    var errEl = document.createElement("div");
+    errEl.style.cssText = "padding:32px;text-align:center";
+    errEl.innerHTML = "<p style='color:#ef4444;font-size:14px;font-weight:700'>Erreur chargement</p><p style='color:#6b6f96;font-size:12px;margin-top:8px'>" + xe(String(e.message||e)) + "</p>";
+    var retryBtn = document.createElement("button");
+    retryBtn.textContent = "Reessayer";
+    retryBtn.style.cssText = "margin-top:12px;background:#4f6ef7;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:inherit";
+    var capturedK = k;
+    retryBtn.onclick = function(){ goto(capturedK); };
+    errEl.appendChild(retryBtn);
+    var pc = document.getElementById("pc");
+    if(pc){ pc.innerHTML = ""; pc.appendChild(errEl); }
+  }
 }
 
 // ================================================================
@@ -1183,24 +1283,94 @@ document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&e.key
 // NOTIFICATIONS (local check on cached data)
 // ================================================================
 function togNotif(){S.notif=!S.notif;var np=document.getElementById("npanel");np.classList.toggle("on",S.notif);if(S.notif)renderNotifs();}
-function renderNotifs(){
-  var list=document.getElementById("nlist");if(!list)return;
-  var alerts=[];
-  var mods=Object.keys(cache);
-  mods.forEach(function(mk){(cache[mk]||[]).forEach(function(r){if(r.status==="OPEN"&&mk==="nc")alerts.push({text:"NC: "+String(r.description||"").substring(0,30),mod:mk,color:"#ef4444"});if(r.status==="EXPIRE"&&mk==="ppe")alerts.push({text:"EPI expire: "+r.type,mod:mk,color:"#f59e0b"});if(r.status==="NON CONFORME"&&mk==="fire")alerts.push({text:"Extincteur NC: "+r.ref,mod:mk,color:"#ef4444"});});});
-  if(!alerts.length){list.innerHTML='<p style="padding:13px;color:#6b6f96;font-size:13px">Aucune alerte</p>';return;}
-  list.innerHTML=alerts.map(function(a){return '<div onclick="togNotif();goto(\''+a.mod+'\')" style="padding:8px 13px;border-bottom:1px solid #232640;cursor:pointer"><p style="margin:0;font-size:12px;font-weight:600;color:'+a.color+'">'+xe(a.text)+"</p></div>";}).join("");
-  var cnt=document.getElementById("ncnt");if(cnt){cnt.textContent=alerts.length;cnt.style.display=alerts.length?"flex":"none";}
+function computeAlerts() {
+  var alerts = [];
+  // EPI — expire ou bientot
+  (cache["ppe"]||[]).forEach(function(p) {
+    var d = dl(p.expiry); var thr = parseInt(p.renewalAlert)||30;
+    if (p.status === "EXPIRE") alerts.push({text:"EPI EXPIRE: "+(p.type||""), sub:p.site||"", days:d, mod:"ppe", color:"#ef4444"});
+    else if (d !== null && d <= thr) alerts.push({text:"EPI a renouveler: "+(p.type||""), sub:p.site||"", days:d, mod:"ppe", color:"#f59e0b"});
+  });
+  // Vehicules — tous les documents
+  var vflds = [{k:"licenseExpiry",l:"Permis"},{k:"insuranceExpiry",l:"Assurance"},{k:"transportCardExpiry",l:"Carte transport"},{k:"parkingCardExpiry",l:"Stationnement"},{k:"technicalExpiry",l:"Visite tech."},{k:"oilChangeExpiry",l:"Vidange"}];
+  (cache["vehicles"]||[]).forEach(function(v) {
+    vflds.forEach(function(f) {
+      var d = dl(v[f.k]);
+      if (d !== null && d <= 60) {
+        var txt = (v.plate||"?")+" - "+f.l;
+        alerts.push({text:txt, sub:v.driver||"", days:d, mod:"vehicles", color:d<0?"#ef4444":d<=30?"#f59e0b":"#3b82f6"});
+      }
+    });
+  });
+  // Extincteurs NC ou bientot
+  (cache["fire"]||[]).forEach(function(f) {
+    if (f.status === "NON CONFORME") alerts.push({text:"Extincteur NC: "+(f.ref||""), sub:f.location||"", days:null, mod:"fire", color:"#ef4444"});
+    var d = dl(f.nextCheck);
+    if (d !== null && d <= 30) alerts.push({text:"Verification: "+(f.ref||""), sub:f.location||"", days:d, mod:"fire", color:d<0?"#ef4444":"#f59e0b"});
+  });
+  // Employes — visite medicale
+  (cache["employees"]||[]).forEach(function(e) {
+    var d = dl(e.nextMedical); var thr = parseInt(e.medicalAlert)||30;
+    if (d !== null && d <= thr) alerts.push({text:"Visite medicale: "+(e.fullName||""), sub:e.position||"", days:d, mod:"employees", color:d<0?"#ef4444":"#f59e0b"});
+  });
+  // Formations — renouvellement
+  (cache["training"]||[]).forEach(function(t) {
+    var d = dl(t.nextRenewal);
+    if (d !== null && d <= 30) alerts.push({text:"Renouveler: "+(t.title||""), sub:t.type||"", days:d, mod:"training", color:d<0?"#ef4444":"#f59e0b"});
+  });
+  // Actions en retard
+  (cache["actions"]||[]).forEach(function(a) {
+    if (a.status === "OVERDUE" || (a.status === "IN PROGRESS" && dl(a.dueDate) !== null && dl(a.dueDate) <= 0))
+      alerts.push({text:"Action en retard: "+String(a.title||"").substring(0,30), sub:a.responsible||"", days:dl(a.dueDate), mod:"actions", color:"#ef4444"});
+  });
+  // NC ouvertes urgentes
+  (cache["nc"]||[]).forEach(function(n) {
+    if (n.status === "OPEN") { var d = dl(n.dueDate); if (d !== null && d <= 7) alerts.push({text:"NC urgente: "+String(n.description||"").substring(0,30), sub:n.site||"", days:d, mod:"nc", color:d<0?"#ef4444":"#f59e0b"}); }
+  });
+  // Reunions imminentes
+  (cache["meetings"]||[]).forEach(function(m) {
+    if (m.status === "PLANNED") { var d = dl(m.date); if (d !== null && d <= 2 && d >= 0) alerts.push({text:"Reunion dans "+d+"j: "+(m.title||""), sub:m.site||"", days:d, mod:"meetings", color:"#3b82f6"}); }
+  });
+  alerts.sort(function(a,b){return (a.days===null?-999:a.days)-(b.days===null?-999:b.days);});
+  return alerts;
 }
 
-// ================================================================
-// UI
-// ================================================================
-function togSide(){var s=document.getElementById("side");var o=document.getElementById("ov");if(s.className==="on"){s.className="off";o.className="";}else{s.className="on";o.className="on";}}
-function closeSide(){if(window.innerWidth<768){document.getElementById("side").className="off";document.getElementById("ov").className="";}}
-function togTheme(){setTh(!S.dark);}
-function setTh(d){S.dark=d;document.body.classList.toggle("light",!d);var i=document.getElementById("thico");if(i)i.innerHTML=d?'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>' :'<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>';}
-function togAI(){S.aiOpen=!S.aiOpen;document.getElementById("aip").classList.toggle("on",S.aiOpen);document.getElementById("fab").style.display=S.aiOpen?"none":"flex";if(S.aiOpen){if(!S.aiMsgs.length)S.aiMsgs=[{r:"b",t:"Bonjour! Je suis votre assistant IA QHSE.\n\nPosez votre question!"}];rdrAI();}}
+function renderNotifs(){
+  var list=document.getElementById("nlist");if(!list)return;
+  var alerts = computeAlerts();
+  var cnt=document.getElementById("ncnt");
+  if(cnt){cnt.textContent=alerts.length;cnt.style.display=alerts.length?"flex":"none";}
+  list.innerHTML="";
+  if(!alerts.length){
+    var p=document.createElement("p");
+    p.style.cssText="padding:13px;color:#6b6f96;font-size:13px";
+    p.textContent="Aucune alerte active";
+    list.appendChild(p);
+    return;
+  }
+  alerts.forEach(function(a){
+    var div=document.createElement("div");
+    div.style.cssText="padding:8px 13px;border-bottom:1px solid #232640;cursor:pointer;display:flex;gap:10px;align-items:flex-start";
+    div.onmouseover=function(){div.style.background="#ffffff0a";};
+    div.onmouseout=function(){div.style.background="";};
+    var mod=a.mod;
+    div.onclick=function(){togNotif();goto(mod);};
+    var dLabel=a.days===null?"":a.days<0?"Expire":a.days===0?"Auj.":a.days+"j";
+    var inner=document.createElement("div");inner.style.flex="1";
+    var title=document.createElement("p");
+    title.style.cssText="margin:0;font-size:12px;font-weight:600;color:"+a.color;
+    title.textContent=a.text;
+    var sub=document.createElement("p");
+    sub.style.cssText="margin:0;font-size:11px;color:#6b6f96";
+    sub.textContent=a.sub||"";
+    if(dLabel){var badge=document.createElement("b");badge.style.color=a.color;badge.textContent=" "+dLabel;sub.appendChild(badge);}
+    inner.appendChild(title);inner.appendChild(sub);
+    div.appendChild(inner);
+    if(dLabel){var sp=document.createElement("span");sp.style.cssText="font-size:11px;font-weight:700;color:"+a.color+";flex-shrink:0;margin-top:2px";sp.textContent=dLabel;div.appendChild(sp);}
+    list.appendChild(div);
+  });
+}
+
 function rdrAI(){var c=document.getElementById("aimsg");if(!c)return;c.innerHTML=S.aiMsgs.map(function(m){return '<div style="display:flex;justify-content:'+(m.r==="u"?"flex-end":"flex-start")+'"><div class="aimsg '+m.r+'">'+xe(m.t)+"</div></div>";}).join("")+(S.aiLoad?'<div style="display:flex"><div class="aimsg b">...</div></div>':"");c.scrollTop=c.scrollHeight;}
 async function aiSend(ov){var inp=document.getElementById("aiinp");var t=(ov||(inp?inp.value:"")).trim();if(!t||S.aiLoad)return;if(inp)inp.value="";S.aiMsgs.push({r:"u",t:t});S.aiLoad=true;rdrAI();try{var msgs=S.aiMsgs.map(function(m){return{role:m.r==="b"?"assistant":"user",content:m.t};});var rs=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:"Tu es un expert QHSE certifie ISO 45001, ISO 14001, ISO 9001. Reponds en francais, de facon concise et pratique.",messages:msgs})});var data=await rs.json();S.aiMsgs.push({r:"b",t:(data.content&&data.content[0])?data.content[0].text:"Desole, reessayez."});}catch(e){S.aiMsgs.push({r:"b",t:"Erreur reseau."});}S.aiLoad=false;rdrAI();}
 window.addEventListener("resize",function(){if(window.innerWidth>=768&&S.user){document.getElementById("side").className="on";document.getElementById("ov").className="";}});
@@ -1214,7 +1384,22 @@ document.addEventListener("click",function(e){var np=document.getElementById("np
   if(!cfg){showSetup();document.getElementById("splash").style.display="none";return;}
   sbInit(cfg.url,cfg.key);
   // Try restore session
-  try{var sess=JSON.parse(localStorage.getItem("qhse_session"));if(sess&&sess.access_token){SB_SESSION=sess;startApp().then(function(){document.getElementById("splash").style.display="none";}).catch(function(){document.getElementById("splash").style.display="none";document.getElementById("auth").style.display="flex";});return;}}catch(e){}
+  try {
+    var sess = JSON.parse(localStorage.getItem("qhse_session"));
+    if (sess && sess.access_token) {
+      SB_SESSION = sess;
+      startApp()
+        .then(function(){ document.getElementById("splash").style.display="none"; })
+        .catch(function(e){
+          console.error("startApp error:", e);
+          SB_SESSION = null;
+          localStorage.removeItem("qhse_session");
+          document.getElementById("splash").style.display="none";
+          document.getElementById("auth").style.display="flex";
+        });
+      return;
+    }
+  } catch(e) { console.error("Session restore error:", e); }
   document.getElementById("splash").style.display="none";
   document.getElementById("auth").style.display="flex";
 })();
