@@ -1720,6 +1720,68 @@ async function printDoc(id) {
   }
 }
 
+// ================================================================
+// UI HELPERS
+// ================================================================
+function closeSide() {
+  if (window.innerWidth < 768) {
+    document.getElementById("side").className = "off";
+    document.getElementById("ov").className = "";
+  }
+}
+function togSide() {
+  var s = document.getElementById("side");
+  var o = document.getElementById("ov");
+  if (s.className === "on") { s.className = "off"; o.className = ""; }
+  else { s.className = "on"; o.className = "on"; }
+}
+function togTheme() { setTh(!S.dark); }
+function setTh(d) {
+  S.dark = d;
+  document.body.classList.toggle("light", !d);
+  var i = document.getElementById("thico");
+  if (i) i.innerHTML = d
+    ? '<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>'
+    : '<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>';
+  if (S.pg === "settings") pgSettings();
+}
+function togAI() {
+  S.aiOpen = !S.aiOpen;
+  document.getElementById("aip").classList.toggle("on", S.aiOpen);
+  document.getElementById("fab").style.display = S.aiOpen ? "none" : "flex";
+  if (S.aiOpen) {
+    if (!S.aiMsgs.length) S.aiMsgs = [{r:"b", t:"Bonjour! Je suis votre assistant IA QHSE.\n\nPosez votre question!"}];
+    rdrAI();
+  }
+}
+function togNotif() {
+  S.notif = !S.notif;
+  var np = document.getElementById("npanel");
+  np.classList.toggle("on", S.notif);
+  if (S.notif) renderNotifs();
+}
+
+window.addEventListener("resize", function() {
+  if (window.innerWidth >= 768 && S.user) {
+    document.getElementById("side").className = "on";
+    document.getElementById("ov").className = "";
+  }
+});
+document.addEventListener("click", function(e) {
+  var np = document.getElementById("npanel");
+  var nb = document.getElementById("nbtn");
+  if (np && !np.contains(e.target) && nb && !nb.contains(e.target)) {
+    np.classList.remove("on"); S.notif = false;
+  }
+  var gs = document.getElementById("gsres");
+  var gw = document.getElementById("gsw");
+  if (gs && gw && !gw.contains(e.target)) gs.style.display = "none";
+});
+document.addEventListener("keydown", function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === "k") { e.preventDefault(); togGS(); }
+  if (e.key === "Escape" && S.gsOpen) togGS();
+});
+
 </script>
 </body>
 </html>
