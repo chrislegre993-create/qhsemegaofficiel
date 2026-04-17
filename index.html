@@ -718,6 +718,7 @@ var NAV = [
   {k:"environment",l:"Environnement",i:"environment"},
   {k:"analytics",l:"Analytique et KPIs",i:"analytics",g:"Rapports"},
   {k:"sites",l:"Mes sites et Lieux",i:"site",g:"Configuration"},
+  {k:"rapport",l:"Rapport Mensuel",i:"rapport",g:"Rapports"},
   {k:"settings",l:"Parametres",i:"settings",g:"Configuration"},
 ];
 
@@ -902,6 +903,8 @@ var PI = {
   check:'<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',
   moon:'<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>',
   sun:'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>',
+  rapport:'<path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>',
+  send:'<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>',
   warn:'<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>',
   analytics:'<path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/>',
   upload:'<path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>',
@@ -1157,6 +1160,7 @@ async function goto(k) {
     else if(k==="sites") await pgSites();
     else if(k==="docsImport") await pgDocsImport();
     else if(k==="analytics") await pgAnalytics();
+    else if(k==="rapport") await pgRapport();
     else if(k==="settings") pgSettings();
     else if(k==="profile") pgProfile();
     else if(M[k]) await pgCRUD(k);
@@ -1719,6 +1723,364 @@ async function printDoc(id) {
     toast("Impression disponible uniquement pour PDF et images",true);
   }
 }
+
+// ================================================================
+// RAPPORT MENSUEL
+// ================================================================
+
+// Manager config stored in localStorage
+function getRapportConfig() {
+  try { return JSON.parse(localStorage.getItem("qhse_rapport_cfg")) || {}; }
+  catch(e) { return {}; }
+}
+function saveRapportConfig(cfg) {
+  localStorage.setItem("qhse_rapport_cfg", JSON.stringify(cfg));
+}
+
+async function pgRapport() {
+  var cfg = getRapportConfig();
+  var now = new Date();
+  var months = ["Janvier","Fevrier","Mars","Avril","Mai","Juin",
+                "Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
+  var curMonth = months[now.getMonth()];
+  var curYear = now.getFullYear();
+
+  // Month/year selectors for the report
+  var monthOpts = months.map(function(m,i){
+    return '<option value="'+i+'"'+(i===now.getMonth()?' selected':'')+'>'+m+'</option>';
+  }).join('');
+  var yearOpts = [curYear-1, curYear, curYear+1].map(function(y){
+    return '<option value="'+y+'"'+(y===curYear?' selected':'')+'>'+y+'</option>';
+  }).join('');
+
+  put('<div class="fi">'
+    +'<div class="sh"><div class="st">'+ic("rapport",22)+
+    '<div><h1>Rapport Mensuel QHSE</h1><p>Generer et envoyer par email</p></div></div></div>'
+
+    // Config manager
+    +'<div class="card" style="margin-bottom:14px">'
+    +'<h3 style="font-size:13px;font-weight:700;margin:0 0 14px">Configuration</h3>'
+    +'<div class="g2">'
+    +'<div class="f"><label>Email du manager</label>'
+    +'<input id="rp-email" type="email" value="'+xe(cfg.managerEmail||'')+'" placeholder="manager@entreprise.com"/></div>'
+    +'<div class="f"><label>Nom du manager</label>'
+    +'<input id="rp-name" type="text" value="'+xe(cfg.managerName||'')+'" placeholder="Ex: M. Konan"/></div>'
+    +'<div class="f"><label>Votre nom / Responsable QHSE</label>'
+    +'<input id="rp-from" type="text" value="'+xe(cfg.fromName||'')+'" placeholder="Ex: Jean Kouassi"/></div>'
+    +'<div class="f"><label>Entreprise</label>'
+    +'<input id="rp-company" type="text" value="'+xe(cfg.company||'')+'" placeholder="Ex: QHSE Solutions CI"/></div>'
+    +'</div>'
+    +'<div class="g2" style="margin-top:4px">'
+    +'<div class="f"><label>Mois du rapport</label>'
+    +'<select id="rp-month">'+monthOpts+'</select></div>'
+    +'<div class="f"><label>Annee</label>'
+    +'<select id="rp-year">'+yearOpts+'</select></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+    +'<button onclick="genRapport()" class="btn bp">'+ic("rapport",14)+' Generer le rapport</button>'
+    +'<button onclick="saveRapportCfg()" class="btn bg0">Sauvegarder config</button>'
+    +'</div></div>'
+
+    // Preview area
+    +'<div id="rapport-preview" style="display:none">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+    +'<button onclick="printRapport()" class="btn bp">'+ic("pdf",14)+' Imprimer / PDF</button>'
+    +'<button onclick="emailRapport()" class="btn" style="background:#22c55e;color:#fff;border:none">'+ic("send",14)+' Envoyer par email</button>'
+    +'<button onclick="copyRapportText()" class="btn bg0">Copier texte</button>'
+    +'</div>'
+    +'<div id="rapport-content" style="background:#fff;color:#111;border-radius:14px;padding:0;overflow:hidden;border:1px solid #232640"></div>'
+    +'</div>'
+    +'</div>');
+}
+
+function saveRapportCfg() {
+  var cfg = {
+    managerEmail: document.getElementById("rp-email").value.trim(),
+    managerName: document.getElementById("rp-name").value.trim(),
+    fromName: document.getElementById("rp-from").value.trim(),
+    company: document.getElementById("rp-company").value.trim(),
+  };
+  saveRapportConfig(cfg);
+  toast("Configuration sauvegardee!");
+}
+
+async function genRapport() {
+  var btn = document.querySelector('button[onclick="genRapport()"]');
+  if(btn){btn.disabled=true;btn.textContent="Generation...";}
+
+  var cfg = getRapportConfig();
+  // Save current form values
+  cfg.managerEmail = document.getElementById("rp-email").value.trim();
+  cfg.managerName = document.getElementById("rp-name").value.trim();
+  cfg.fromName = document.getElementById("rp-from").value.trim();
+  cfg.company = document.getElementById("rp-company").value.trim();
+  saveRapportConfig(cfg);
+
+  var months = ["Janvier","Fevrier","Mars","Avril","Mai","Juin",
+                "Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
+  var selMonth = parseInt(document.getElementById("rp-month").value);
+  var selYear = parseInt(document.getElementById("rp-year").value);
+  var monthLabel = months[selMonth]+" "+selYear;
+
+  // Load all data
+  toast("Chargement des donnees...");
+  var mods = ["incidents","audits","risks","nc","actions","ppe","fire","vehicles","employees","training","environment","meetings"];
+  var c = {};
+  await Promise.all(mods.map(async function(k){ c[k] = await gRecs(k); }));
+
+  // Filter by month/year where possible
+  function inMonth(dateStr) {
+    if(!dateStr) return false;
+    var d = new Date(dateStr);
+    return !isNaN(d) && d.getMonth()===selMonth && d.getFullYear()===selYear;
+  }
+  function monthRecs(arr, dateKey) {
+    return arr.filter(function(r){ return inMonth(r[dateKey||'date']||r['created_at']||''); });
+  }
+
+  // Compute stats
+  var inc_month = monthRecs(c.incidents, 'date');
+  var aud_month = monthRecs(c.audits, 'date');
+  var nc_open = c.nc.filter(function(r){return r.status==='OPEN';});
+  var nc_closed_month = monthRecs(c.nc.filter(function(r){return r.status==='CLOSED';}), 'dueDate');
+  var act_done = c.actions.filter(function(r){return r.status==='COMPLETED';});
+  var act_overdue = c.actions.filter(function(r){return r.status==='OVERDUE';});
+  var ppe_exp = c.ppe.filter(function(r){return r.status==='EXPIRE';});
+  var fire_nc = c.fire.filter(function(r){return r.status==='NON CONFORME';});
+  var lostDays = inc_month.reduce(function(s,i){return s+(parseFloat(i.lostDays)||0);},0);
+  var empActive = c.employees.filter(function(e){return e.status==='ACTIVE';});
+  var train_month = monthRecs(c.training, 'date');
+  var meet_month = monthRecs(c.meetings, 'date');
+
+  // Alerts
+  var alerts = computeAlerts();
+
+  // Vehicle expiry counts
+  var vflds = ['licenseExpiry','insuranceExpiry','technicalExpiry','oilChangeExpiry'];
+  var vehExp = 0;
+  c.vehicles.forEach(function(v){ vflds.forEach(function(f){ var d=dl(v[f]); if(d!==null&&d<=30) vehExp++; }); });
+
+  // Audit avg score
+  var aud_scored = c.audits.filter(function(a){return parseFloat(a.score)>0;});
+  var aud_avg = aud_scored.length ? Math.round(aud_scored.reduce(function(s,a){return s+parseFloat(a.score);},0)/aud_scored.length) : null;
+
+  // Conformity
+  function confScore() {
+    var parts = [];
+    if(aud_scored.length) parts.push(aud_avg);
+    if(c.actions.length) parts.push(Math.round(act_done.length/c.actions.length*100));
+    if(c.nc.length) parts.push(Math.max(0,100-Math.round(nc_open.length/c.nc.length*100)));
+    return parts.length ? Math.round(parts.reduce(function(s,v){return s+v;},0)/parts.length) : null;
+  }
+  var conf = confScore();
+  var confC = conf===null?'#6b7280':conf>=80?'#16a34a':conf>=60?'#d97706':'#dc2626';
+
+  // ── Build report HTML ──────────────────────────────────────────
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+
+  function row(label, value, color) {
+    return '<tr><td style="padding:8px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6">'+label+'</td>'
+      +'<td style="padding:8px 14px;font-size:13px;font-weight:700;text-align:right;border-bottom:1px solid #f3f4f6;color:'+(color||'#111')+'">'+(value===null||value===undefined?'N/A':value)+'</td></tr>';
+  }
+  function section(title, color, rows) {
+    return '<div style="margin:0 28px 20px">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+      +'<div style="width:4px;height:22px;background:'+color+';border-radius:2px"></div>'
+      +'<h3 style="margin:0;font-size:14px;font-weight:700;color:#111">'+title+'</h3></div>'
+      +'<table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:10px;overflow:hidden">'+rows+'</table></div>';
+  }
+  function alert_badge(n, label, color) {
+    return '<div style="display:inline-flex;align-items:center;gap:6px;background:'+color+'15;border:1px solid '+color+'30;border-radius:8px;padding:6px 12px;margin:3px">'
+      +'<span style="font-size:20px;font-weight:900;color:'+color+'">'+n+'</span>'
+      +'<span style="font-size:11px;color:#374151;max-width:80px;line-height:1.3">'+label+'</span></div>';
+  }
+
+  var reportHTML = ''
+    // Header
+    +'<div style="background:linear-gradient(135deg,#4f6ef7,#7c5cf6);padding:32px 28px;color:#fff">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">'
+    +'<div>'
+    +'<p style="margin:0 0 4px;font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:1px">Rapport Mensuel</p>'
+    +'<h1 style="margin:0;font-size:26px;font-weight:900">QHSE MEGA</h1>'
+    +'<p style="margin:4px 0 0;font-size:15px;opacity:.9">'+monthLabel+'</p>'
+    +'</div>'
+    +'<div style="text-align:right">'
+    +'<p style="margin:0;font-size:12px;opacity:.8">Emis par</p>'
+    +'<p style="margin:0;font-size:14px;font-weight:700">'+xe(cfg.fromName||S.user.name||'QHSE')+'</p>'
+    +'<p style="margin:0;font-size:12px;opacity:.8">'+xe(cfg.company||S.user.company||'')+'</p>'
+    +'<p style="margin:4px 0 0;font-size:11px;opacity:.7">Emis le '+dateStr+'</p>'
+    +'</div></div></div>'
+
+    // Score global
+    +(conf!==null?'<div style="background:#f0f4ff;padding:16px 28px;display:flex;align-items:center;gap:16px;border-bottom:2px solid #e5e7eb">'
+    +'<div style="text-align:center;min-width:70px">'
+    +'<p style="margin:0;font-size:36px;font-weight:900;color:'+confC+'">'+conf+'%</p>'
+    +'<p style="margin:0;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px">Score conformite</p></div>'
+    +'<div style="flex:1;height:12px;background:#e5e7eb;border-radius:6px"><div style="height:100%;width:'+conf+'%;background:'+confC+';border-radius:6px"></div></div></div>'
+    :'')
+
+    // Alertes actives
+    +(alerts.length?'<div style="padding:16px 28px;border-bottom:1px solid #f3f4f6;background:#fff">'
+    +'<p style="margin:0 0 10px;font-size:12px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.5px">Alertes actives ('+alerts.length+')</p>'
+    +'<div style="display:flex;flex-wrap:wrap">'+alerts.slice(0,8).map(function(a){return alert_badge(a.days===null?"!":a.days<0?"EXP":a.days+"j", a.text.substring(0,25), a.color);}).join('')+'</div></div>'
+    :'<div style="padding:12px 28px;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><p style="margin:0;color:#16a34a;font-weight:700;font-size:13px">✓ Aucune alerte active ce mois</p></div>')
+
+    // Section Securite
+    +section("Securite & Sante au Travail", "#ef4444",
+      row("Incidents ce mois", inc_month.length, inc_month.length>0?"#ef4444":"#16a34a")
+      +row("Jours de travail perdus", lostDays, lostDays>0?"#ef4444":"#16a34a")
+      +row("EPI expires / non conformes", ppe_exp.length, ppe_exp.length>0?"#ef4444":"#16a34a")
+      +row("Extincteurs non conformes", fire_nc.length, fire_nc.length>0?"#ef4444":"#16a34a")
+      +row("Documents vehicules a renouveler (30j)", vehExp, vehExp>0?"#d97706":"#16a34a")
+      +row("Reunions securite ce mois", meet_month.length, "#374151")
+    )
+
+    // Section Qualite
+    +section("Qualite & Conformite", "#4f6ef7",
+      row("NC ouvertes", nc_open.length, nc_open.length>5?"#ef4444":nc_open.length>0?"#d97706":"#16a34a")
+      +row("NC cloturees ce mois", nc_closed_month.length, "#16a34a")
+      +row("Actions en retard", act_overdue.length, act_overdue.length>0?"#ef4444":"#16a34a")
+      +row("Actions completees", act_done.length, "#16a34a")
+      +row("Audits ce mois", aud_month.length, "#374151")
+      +row("Score moyen audits", aud_avg!==null?aud_avg+"%":"--", aud_avg!==null?(aud_avg>=80?"#16a34a":aud_avg>=60?"#d97706":"#ef4444"):"#374151")
+    )
+
+    // Section RH
+    +section("Ressources Humaines", "#22c55e",
+      row("Effectif actif", empActive.length, "#374151")
+      +row("Formations ce mois", train_month.length, train_month.length>0?"#16a34a":"#374151")
+      +row("Total formations de l annee", c.training.filter(function(t){return t.status==="COMPLETED";}).length, "#374151")
+    )
+
+    // Incidents detail table (if any)
+    +(inc_month.length>0?'<div style="margin:0 28px 20px">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+    +'<div style="width:4px;height:22px;background:#ef4444;border-radius:2px"></div>'
+    +'<h3 style="margin:0;font-size:14px;font-weight:700;color:#111">Detail des incidents - '+monthLabel+'</h3></div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="background:#fef2f2"><th style="padding:8px 10px;text-align:left;color:#6b7280">Ref.</th><th style="padding:8px 10px;text-align:left;color:#6b7280">Titre</th><th style="padding:8px 10px;text-align:left;color:#6b7280">Gravite</th><th style="padding:8px 10px;text-align:left;color:#6b7280">Statut</th><th style="padding:8px 10px;text-align:left;color:#6b7280">Jours perdus</th></tr></thead>'
+    +'<tbody>'
+    +inc_month.map(function(i){
+      var gc={'CRITICAL':'#dc2626','HIGH':'#ea580c','MEDIUM':'#d97706','LOW':'#16a34a'};
+      var gc2=gc[i.severity]||'#6b7280';
+      return '<tr style="border-bottom:1px solid #f3f4f6">'
+        +'<td style="padding:7px 10px;font-family:monospace;font-size:11px">'+xe(i.ref||'--')+'</td>'
+        +'<td style="padding:7px 10px">'+xe(i.title||'--')+'</td>'
+        +'<td style="padding:7px 10px"><span style="background:'+gc2+'20;color:'+gc2+';padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">'+xe(i.severity||'--')+'</span></td>'
+        +'<td style="padding:7px 10px">'+xe(i.status||'--')+'</td>'
+        +'<td style="padding:7px 10px;font-weight:700;color:'+(i.lostDays>0?"#ef4444":"#16a34a")+'">'+xe(i.lostDays||'0')+'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>'
+    :'')
+
+    // Footer
+    +'<div style="background:#f9fafb;padding:16px 28px;border-top:2px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+    +'<div><p style="margin:0;font-size:11px;color:#9ca3af">Rapport genere automatiquement par QHSE MEGA</p>'
+    +'<p style="margin:0;font-size:11px;color:#9ca3af">'+dateStr+' - '+xe(cfg.company||'')+'</p></div>'
+    +'<div style="text-align:right">'
+    +'<p style="margin:0;font-size:12px;font-weight:700;color:#374151">'+xe(cfg.fromName||S.user.name||'')+'</p>'
+    +'<p style="margin:0;font-size:11px;color:#9ca3af">Responsable QHSE</p></div></div>';
+
+  // Show the report
+  var preview = document.getElementById("rapport-preview");
+  var rapCont = document.getElementById("rapport-content");
+  if(preview && rapCont) {
+    rapCont.innerHTML = reportHTML;
+    preview.style.display = "block";
+    preview.scrollIntoView({behavior:"smooth"});
+  }
+  if(btn){btn.disabled=false;btn.innerHTML=ic("rapport",14)+' Generer le rapport';}
+  toast("Rapport "+monthLabel+" genere!");
+
+  // Store for later use
+  window._lastReport = {html: reportHTML, month: monthLabel, cfg: cfg, c: c, alerts: alerts};
+}
+
+function printRapport() {
+  if(!window._lastReport){toast("Generez d abord le rapport",true);return;}
+  var win = window.open("","_blank");
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rapport QHSE '+xe(window._lastReport.month)+'</title>'
+    +'<style>@media print{body{margin:0}@page{margin:10mm}}</style></head>'
+    +'<body>'+window._lastReport.html
+    +'<script>setTimeout(function(){window.print();},400);<\/script></body></html>');
+  win.document.close();
+  toast("Fenetre d impression ouverte");
+}
+
+function emailRapport() {
+  if(!window._lastReport){toast("Generez d abord le rapport",true);return;}
+  var r = window._lastReport;
+  var cfg = r.cfg;
+  if(!cfg.managerEmail){toast("Saisissez l email du manager d abord",true);return;}
+
+  var months = ["Janvier","Fevrier","Mars","Avril","Mai","Juin",
+                "Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
+  var now = new Date();
+
+  // Build plain text version of the report
+  var c = r.c;
+  var alerts = r.alerts;
+  var inc_m = c.incidents.filter(function(i){return i.status==="OPEN";});
+  var lostD = c.incidents.reduce(function(s,i){return s+(parseFloat(i.lostDays)||0);},0);
+  var nc_o = c.nc.filter(function(n){return n.status==="OPEN";});
+  var act_late = c.actions.filter(function(a){return a.status==="OVERDUE";});
+  var act_done = c.actions.filter(function(a){return a.status==="COMPLETED";});
+
+  var subject = encodeURIComponent("Rapport Mensuel QHSE - "+r.month+" - "+xe(cfg.company||''));
+
+  var body = "Bonjour "+xe(cfg.managerName||"")+",%0D%0A%0D%0A"
+    +"Veuillez trouver ci-dessous le rapport mensuel QHSE pour le mois de "+r.month+".%0D%0A%0D%0A"
+    +"════ SYNTHESE QHSE - "+r.month.toUpperCase()+" ════%0D%0A%0D%0A"
+    +"SECURITE & SANTE%0D%0A"
+    +"• Incidents ouverts : "+c.incidents.filter(function(i){return i.status==="OPEN";}).length+"%0D%0A"
+    +"• Jours perdus : "+lostD+"%0D%0A"
+    +"• EPI expires : "+c.ppe.filter(function(p){return p.status==="EXPIRE";}).length+"%0D%0A"
+    +"• Extincteurs NC : "+c.fire.filter(function(f){return f.status==="NON CONFORME";}).length+"%0D%0A%0D%0A"
+    +"QUALITE & CONFORMITE%0D%0A"
+    +"• NC ouvertes : "+nc_o.length+"%0D%0A"
+    +"• Actions en retard : "+act_late.length+"%0D%0A"
+    +"• Actions completees : "+act_done.length+"%0D%0A%0D%0A"
+    +"RESSOURCES HUMAINES%0D%0A"
+    +"• Effectif actif : "+c.employees.filter(function(e){return e.status==="ACTIVE";}).length+"%0D%0A"
+    +"• Formations completees : "+c.training.filter(function(t){return t.status==="COMPLETED";}).length+"%0D%0A%0D%0A"
+    +(alerts.length>0?"ALERTES ACTIVES ("+alerts.length+")%0D%0A"
+      +alerts.slice(0,5).map(function(a){
+        var d=a.days===null?"":a.days<0?" [EXPIRE]":a.days===0?" [Aujourd hui]":" ["+a.days+"j]";
+        return "• "+a.text+d;
+      }).join("%0D%0A")+"%0D%0A%0D%0A"
+    :"• Aucune alerte active%0D%0A%0D%0A")
+    +"════════════════════════%0D%0A%0D%0A"
+    +"Le rapport complet en PDF peut etre genere et imprime depuis l application QHSE MEGA.%0D%0A%0D%0A"
+    +"Cordialement,%0D%0A"
+    +xe(cfg.fromName||S.user.name||"")+" - Responsable QHSE%0D%0A"
+    +xe(cfg.company||S.user.company||"");
+
+  var mailtoLink = "mailto:"+encodeURIComponent(cfg.managerEmail)
+    +"?subject="+subject+"&body="+body;
+
+  // Open mailto
+  var a = document.createElement("a");
+  a.href = mailtoLink;
+  a.click();
+  toast("Client email ouvert - verifiez et envoyez!");
+}
+
+function copyRapportText() {
+  if(!window._lastReport){toast("Generez d abord le rapport",true);return;}
+  var c = window._lastReport.c;
+  var text = "RAPPORT MENSUEL QHSE - "+window._lastReport.month+"\n\n"
+    +"Securite:\n"
+    +"- Incidents ouverts: "+c.incidents.filter(function(i){return i.status==="OPEN";}).length+"\n"
+    +"- Jours perdus: "+c.incidents.reduce(function(s,i){return s+(parseFloat(i.lostDays)||0);},0)+"\n\n"
+    +"Qualite:\n"
+    +"- NC ouvertes: "+c.nc.filter(function(n){return n.status==="OPEN";}).length+"\n"
+    +"- Actions en retard: "+c.actions.filter(function(a){return a.status==="OVERDUE";}).length+"\n\n"
+    +"Rapport genere par QHSE MEGA";
+  navigator.clipboard.writeText(text).then(function(){toast("Texte copie!");}).catch(function(){toast("Erreur copie",true);});
+}
+
 
 // ================================================================
 // UI HELPERS
