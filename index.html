@@ -927,11 +927,16 @@ function mkNav() {
 // PAGES (async)
 // ================================================================
 async function pgDash() {
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
-  var mods=["incidents","actions","risks","nc","ppe","fire","vehicles","meetings","employees","training"];
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement du tableau de bord...</p></div>');
+  var mods=["incidents","actions","risks","nc","ppe","fire","vehicles","meetings","employees","training","environment","audits"];
   var c={};
   await Promise.all(mods.map(async function(k){c[k]=await gRecs(k);}));
 
+  // ── Compute all indicators ──────────────────────────────────────
+  var now = new Date();
+  var months=["Jan","Fev","Mar","Avr","Mai","Jun","Jul","Aou","Sep","Oct","Nov","Dec"];
+
+  // KPIs
   var oI=c.incidents.filter(function(r){return r.status==="OPEN";}).length;
   var oA=c.actions.filter(function(r){return r.status==="OVERDUE";}).length;
   var cR=c.risks.filter(function(r){return r.level==="CRITICAL";}).length;
@@ -945,84 +950,500 @@ async function pgDash() {
   var vehActif=c.vehicles.filter(function(v){return v.status==="ACTIVE";}).length;
   var nbFire=c.fire.length;
   var fireOk=c.fire.filter(function(f){return f.status==="OK";}).length;
-  // Update notification badge from cached data
+  var actDone=c.actions.filter(function(a){return a.status==="COMPLETED";}).length;
+  var actTotal=c.actions.length;
+  var actR=actTotal?Math.round(actDone/actTotal*100):0;
+  var medOk=c.employees.filter(function(e){var d=dl(e.nextMedical);return d!==null&&d>0;}).length;
+  var medR=empActif?Math.round(medOk/empActif*100):0;
+
+  // Vehicle expiries
+  var vflds=["licenseExpiry","insuranceExpiry","technicalExpiry","oilChangeExpiry","transportCardExpiry"];
+  var vExp=0,vWarn=0,vOk=0;
+  c.vehicles.forEach(function(v){vflds.forEach(function(f){var d=dl(v[f]);if(d===null)return;if(d<0)vExp++;else if(d<=30)vWarn++;else vOk++;});});
+
+  // Alerts
   var allAlerts=computeAlerts();
+
+  // Update notif badge
   var cnt=document.getElementById("ncnt");
   if(cnt){cnt.textContent=allAlerts.length;cnt.style.display=allAlerts.length?"flex":"none";}
 
-  var kpis=[
-    {l:"Incidents ouverts",v:oI,i:"incidents",c:"#ef4444",mod:"incidents",detail:""},
-    {l:"Risques critiques",v:cR,i:"risks",c:"#f59e0b",mod:"risks",detail:""},
-    {l:"Actions en retard",v:oA,i:"actions",c:"#7c5cf6",mod:"actions",detail:""},
-    {l:"NC ouvertes",v:oN,i:"nc",c:"#ec4899",mod:"nc",detail:""},
-    {l:"EPI expires",v:eP,i:"ppe",c:"#ef4444",mod:"ppe",detail:""},
-    {l:"Extincteurs",v:nbFire,i:"fire",c:nF>0?"#ef4444":"#22c55e",mod:"fire",detail:fireOk+"/"+nbFire+" conformes"},
-    {l:"Employes",v:nbEmp,i:"employee",c:"#4f6ef7",mod:"employees",detail:empActif+" actifs"},
-    {l:"Vehicules",v:nbVeh,i:"vehicle",c:"#38bdf8",mod:"vehicles",detail:vehActif+" actifs"},
-    {l:"Reunions planifiees",v:planM,i:"meeting",c:"#22c55e",mod:"meetings",detail:""},
-    {l:"Alertes actives",v:allAlerts.length,i:"warn",c:allAlerts.length>0?"#ef4444":"#22c55e",mod:"dashboard",detail:allAlerts.length?"Voir cloche en haut":"Tout est OK"},
-  ];
-  var kH=kpis.map(function(k){return '<div class="kpi" onclick="goto(\''+k.mod+'\')"><div style="position:absolute;top:-12px;right:-12px;width:54px;height:54px;border-radius:50%;background:'+k.c+'15"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;margin:0">'+k.l+'</p><h2 style="font-size:24px;font-weight:800;margin:2px 0">'+k.v+'</h2>'+(k.detail?'<p style="font-size:10px;color:#6b6f96;margin:2px 0 0">'+k.detail+'</p>':'')+'</div><div style="color:'+k.c+';background:'+k.c+'22;padding:7px;border-radius:8px">'+ic(k.i,18)+"</div></div></div>";}).join("");
+  // ── SVG Chart helpers ───────────────────────────────────────────
+  // Donut chart
+  function donut(pct, color, size, thickness) {
+    size=size||80; thickness=thickness||12;
+    var r=(size-thickness)/2; var cx=size/2; var cy=size/2;
+    var circumference=2*Math.PI*r;
+    var dash=pct/100*circumference;
+    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="transform:rotate(-90deg)">'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#232640" stroke-width="'+thickness+'"/>'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+thickness
+      +'" stroke-dasharray="'+dash.toFixed(1)+' '+circumference.toFixed(1)
+      +'" stroke-linecap="round"/></svg>';
+  }
 
-  // Vehicles docs
+  // Horizontal bar
+  function hbar(pct, color) {
+    return '<div style="height:8px;background:#232640;border-radius:4px;overflow:hidden;margin-top:4px">'
+      +'<div style="height:100%;width:'+Math.min(100,pct)+'%;background:'+color+';border-radius:4px;transition:width .6s ease"></div></div>';
+  }
+
+  // Mini bar chart (last 6 months of incidents by date)
+  function miniBarChart(records, dateKey, color, label) {
+    var bars=[];
+    for(var i=5;i>=0;i--){
+      var d=new Date(now.getFullYear(),now.getMonth()-i,1);
+      var mo=d.getMonth(); var yr=d.getFullYear();
+      var count=records.filter(function(r){
+        if(!r[dateKey]) return false;
+        var rd=new Date(r[dateKey]); return !isNaN(rd)&&rd.getMonth()===mo&&rd.getFullYear()===yr;
+      }).length;
+      bars.push({m:months[mo],v:count,yr:yr});
+    }
+    var mx=Math.max.apply(null,bars.map(function(b){return b.v;}));
+    if(mx===0)mx=1;
+    var w=100/bars.length;
+    var svgH=70; var svgW=220;
+    var svg='<svg width="100%" height="'+svgH+'" viewBox="0 0 '+svgW+' '+svgH+'" preserveAspectRatio="none" style="overflow:visible">';
+    bars.forEach(function(b,i){
+      var barH=Math.round((b.v/mx)*(svgH-24));
+      var x=i*(svgW/bars.length)+2; var bw=svgW/bars.length-4;
+      var y=svgH-barH-18;
+      svg+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+barH+'" rx="3" fill="'+color+'" opacity="0.85"/>';
+      if(b.v>0) svg+='<text x="'+(x+bw/2)+'" y="'+(y-3)+'" text-anchor="middle" fill="'+color+'" font-size="9" font-weight="700">'+b.v+'</text>';
+      svg+='<text x="'+(x+bw/2)+'" y="'+(svgH-4)+'" text-anchor="middle" fill="#6b6f96" font-size="9">'+b.m+'</text>';
+    });
+    svg+='</svg>';
+    return svg;
+  }
+
+  // Radar / spider chart for conformity
+  function radarChart(items) {
+    var n=items.length; var cx=80; var cy=80; var r=60;
+    var pts=items.map(function(item,i){
+      var angle=(2*Math.PI*i/n)-Math.PI/2;
+      var v=Math.min(100,item.v||0)/100;
+      return {x:cx+r*v*Math.cos(angle), y:cy+r*v*Math.sin(angle), lx:cx+(r+16)*Math.cos(angle), ly:cy+(r+16)*Math.sin(angle), label:item.l, v:item.v, color:item.c};
+    });
+    var svg='<svg width="160" height="160" viewBox="0 0 160 160">';
+    // Grid rings
+    [0.25,0.5,0.75,1].forEach(function(scale){
+      var gpts=items.map(function(item,i){var a=(2*Math.PI*i/n)-Math.PI/2;return (cx+r*scale*Math.cos(a)).toFixed(1)+","+(cy+r*scale*Math.sin(a)).toFixed(1);});
+      svg+='<polygon points="'+gpts.join(' ')+'" fill="none" stroke="#232640" stroke-width="1"/>';
+    });
+    // Spokes
+    items.forEach(function(item,i){var a=(2*Math.PI*i/n)-Math.PI/2;svg+='<line x1="'+cx+'" y1="'+cy+'" x2="'+(cx+r*Math.cos(a)).toFixed(1)+'" y2="'+(cy+r*Math.sin(a)).toFixed(1)+'" stroke="#232640" stroke-width="1"/>';});
+    // Data polygon
+    var dpts=pts.map(function(p){return p.x.toFixed(1)+","+p.y.toFixed(1);});
+    svg+='<polygon points="'+dpts.join(' ')+'" fill="#4f6ef730" stroke="#4f6ef7" stroke-width="2"/>';
+    // Points + labels
+    pts.forEach(function(p){
+      svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="4" fill="'+p.color+'"/>';
+      svg+='<text x="'+p.lx.toFixed(1)+'" y="'+p.ly.toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" fill="#e2e5f5" font-size="8" font-weight="700">'+p.label+'</text>';
+    });
+    svg+='</svg>';
+    return svg;
+  }
+
+  // Trend line chart
+  function lineChart(data, color, height) {
+    height=height||60;
+    if(!data.length) return '<p style="color:#6b6f96;font-size:11px;padding:8px 0">Aucune donnee</p>';
+    var mx=Math.max.apply(null,data.map(function(d){return d.v;}));
+    var mn=0; if(mx===0)mx=1;
+    var w=220; var pts=data.map(function(d,i){
+      var x=i*(w/(data.length-1||1));
+      var y=height-Math.round((d.v-mn)/(mx-mn)*(height-10))-5;
+      return x.toFixed(1)+","+y.toFixed(1);
+    });
+    var svg='<svg width="100%" height="'+height+'" viewBox="0 0 '+w+' '+height+'" preserveAspectRatio="none">';
+    // Area fill
+    var apts="0,"+(height)+" "+pts.join(" ")+" "+w+","+height;
+    svg+='<polygon points="'+apts+'" fill="'+color+'" opacity="0.15"/>';
+    // Line
+    svg+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    // Dots
+    data.forEach(function(d,i){
+      var x=i*(w/(data.length-1||1));
+      var y=height-Math.round((d.v-mn)/(mx-mn)*(height-10))-5;
+      svg+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3.5" fill="'+color+'"/>';
+    });
+    svg+='</svg>';
+    return svg;
+  }
+
+  // Stacked horizontal bar
+  function stackedBar(items, total) {
+    if(!total) return '';
+    var html='<div style="display:flex;height:14px;border-radius:7px;overflow:hidden;margin:8px 0">';
+    items.forEach(function(it){
+      var pct=total?Math.round(it.v/total*100):0;
+      if(pct>0) html+='<div style="width:'+pct+'%;background:'+it.c+';transition:width .6s" title="'+it.l+': '+it.v+'"></div>';
+    });
+    html+='</div>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">';
+    items.forEach(function(it){
+      html+='<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:2px;background:'+it.c+';flex-shrink:0"></div><span style="font-size:10px;color:#6b6f96">'+it.l+': <b style="color:#e2e5f5">'+it.v+'</b></span></div>';
+    });
+    html+='</div>';
+    return html;
+  }
+
+  // ── Build last 6 months data series ───────────────────────────
+  function monthSeries(records, dateKey) {
+    return Array.from({length:6},function(_,i){
+      var d=new Date(now.getFullYear(),now.getMonth()-5+i,1);
+      var mo=d.getMonth(); var yr=d.getFullYear();
+      return {l:months[mo], v:records.filter(function(r){if(!r[dateKey])return false;var rd=new Date(r[dateKey]);return !isNaN(rd)&&rd.getMonth()===mo&&rd.getFullYear()===yr;}).length};
+    });
+  }
+  var incSeries=monthSeries(c.incidents,'date');
+  var ncSeries=monthSeries(c.nc,'created_at');
+  var actSeries=monthSeries(c.actions.filter(function(a){return a.status==='COMPLETED';}),'created_at');
+  var trainSeries=monthSeries(c.training,'date');
+
+  // Env trends
+  var envE=c.environment.filter(function(e){return e.type&&e.type.indexOf('nergie')>=0;});
+  var envW=c.environment.filter(function(e){return e.type&&e.type.toLowerCase().indexOf('eau')>=0;});
+  var envESeries=envE.slice(-6).map(function(e){return {l:e.period||e.date||'',v:parseFloat(e.value)||0};});
+  var envWSeries=envW.slice(-6).map(function(e){return {l:e.period||e.date||'',v:parseFloat(e.value)||0};});
+
+  // Radar data
+  var ncOff=c.nc.length?Math.max(0,100-Math.round(oN/c.nc.length*100)):100;
+  var actOff=actTotal?actR:100;
+  var fireOff=nbFire?Math.round(fireOk/nbFire*100):100;
+  var ppeOff=c.ppe.length?Math.round(c.ppe.filter(function(p){return p.status==='VALIDE';}).length/c.ppe.length*100):100;
+  var aaScored=c.audits.filter(function(a){return parseFloat(a.score)>0;});
+  var auditScore=aaScored.length?Math.round(aaScored.reduce(function(s,a){return s+parseFloat(a.score);},0)/aaScored.length):0;
+  var radarData=[
+    {l:'SST',v:Math.max(0,100-oI*10),c:'#ef4444'},
+    {l:'Qual.',v:ncOff,c:'#4f6ef7'},
+    {l:'Actions',v:actOff,c:'#22c55e'},
+    {l:'EPI',v:ppeOff,c:'#f59e0b'},
+    {l:'Feu',v:fireOff,c:'#f97316'},
+    {l:'Audit',v:auditScore||50,c:'#7c5cf6'},
+  ];
+
+  // Risks by level
+  var rC=c.risks.filter(function(r){return r.level==='CRITICAL';}).length;
+  var rH=c.risks.filter(function(r){return r.level==='HIGH';}).length;
+  var rM=c.risks.filter(function(r){return r.level==='MEDIUM';}).length;
+  var rL=c.risks.filter(function(r){return r.level==='LOW';}).length;
+  var rTotal=rC+rH+rM+rL;
+
+  // Actions by status
+  var aPlan=c.actions.filter(function(a){return a.status==='PLANNED';}).length;
+  var aInProg=c.actions.filter(function(a){return a.status==='IN PROGRESS';}).length;
+  var aOver=c.actions.filter(function(a){return a.status==='OVERDUE';}).length;
+  var aCanc=c.actions.filter(function(a){return a.status==='CANCELLED';}).length;
+
+  // ── KPI cards ─────────────────────────────────────────────────
+  function kpiCard(l,v,detail,color,icon,mod,pct) {
+    var dc=v===0?'#22c55e':color;
+    return '<div class="kpi" onclick="goto(\''+mod+'\')" style="cursor:pointer">'
+      +'<div style="position:absolute;top:-10px;right:-10px;width:50px;height:50px;border-radius:50%;background:'+dc+'15"></div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+      +'<div><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;letter-spacing:.4px;margin:0">'+l+'</p>'
+      +'<h2 style="font-size:26px;font-weight:900;margin:2px 0;color:'+dc+'">'+v+'</h2>'
+      +(detail?'<p style="font-size:10px;color:#6b6f96;margin:0">'+detail+'</p>':'')
+      +'</div>'
+      +'<div style="color:'+dc+';background:'+dc+'22;padding:8px;border-radius:10px">'+ic(icon,18)+'</div></div>'
+      +(pct!==undefined?hbar(pct,dc):'')
+      +'</div>';
+  }
+
+  var kH = kpiCard("Incidents ouverts",oI,"",oI>0?"#ef4444":"#22c55e","incidents","incidents")
+    +kpiCard("Risques critiques",cR,"",cR>0?"#f59e0b":"#22c55e","risks","risks")
+    +kpiCard("Actions en retard",oA,actDone+"/"+actTotal+" completees","#7c5cf6","actions","actions",actR)
+    +kpiCard("NC ouvertes",oN,"","#ec4899","nc","nc")
+    +kpiCard("EPI expires",eP,"","#ef4444","ppe","ppe")
+    +kpiCard("Extincteurs",nbFire,fireOk+"/"+nbFire+" OK",nF>0?"#ef4444":"#22c55e","fire","fire",nbFire?Math.round(fireOk/nbFire*100):100)
+    +kpiCard("Employes",nbEmp,empActif+" actifs","#4f6ef7","employee","employees",nbEmp?Math.round(empActif/nbEmp*100):100)
+    +kpiCard("Vehicules",nbVeh,vehActif+" actifs","#38bdf8","vehicle","vehicles",nbVeh?Math.round(vehActif/nbVeh*100):100)
+    +kpiCard("Alertes actives",allAlerts.length,allAlerts.length?"Voir les details":"Tout est OK",allAlerts.length>0?"#ef4444":"#22c55e","warn","dashboard")
+    +kpiCard("Reunions planifiees",planM,"","#22c55e","meeting","meetings");
+
+  // ── Vehicles expiry summary ──────────────────────────────────
   var vDocH="";
   c.vehicles.slice(0,4).forEach(function(v){
     var docs=[{l:"Permis",d:v.licenseExpiry},{l:"Assurance",d:v.insuranceExpiry},{l:"Transport",d:v.transportCardExpiry},{l:"Visite",d:v.technicalExpiry},{l:"Vidange",d:v.oilChangeExpiry}];
-    vDocH+='<div style="padding:7px 0;border-bottom:1px solid #232640"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><p style="margin:0;font-size:12px;font-weight:700">'+xe(v.plate||"--")+" "+xe(v.model||"")+"</p><span style=\"font-size:11px;color:#6b6f96\">"+xe(v.driver||"")+"</span></div>";
-    vDocH+=docs.filter(function(d){return d.d;}).map(function(doc){var n=dl(doc.d);var c2=n===null?"#6b6f96":n<0?"#ef4444":n<=30?"#f59e0b":"#22c55e";return '<span class="bdg" style="background:'+c2+'22;color:'+c2+';border:1px solid '+c2+'44;margin-right:3px">'+doc.l+": "+(n===null?"--":n<0?"Exp.":n+"j")+"</span>";}).join("")+"</div>";
+    vDocH+='<div style="padding:6px 0;border-bottom:1px solid #232640"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><p style="margin:0;font-size:12px;font-weight:700">'+xe(v.plate||"--")+" "+xe(v.model||"")+'</p><span style="font-size:11px;color:#6b6f96">'+xe(v.driver||"--")+'</span></div>';
+    vDocH+=docs.filter(function(d){return d.d;}).map(function(doc){var n=dl(doc.d);var c2=n===null?"#6b6f96":n<0?"#ef4444":n<=30?"#f59e0b":"#22c55e";return '<span class="bdg" style="background:'+c2+'22;color:'+c2+';border:1px solid '+c2+'44;margin-right:3px;margin-bottom:2px">'+doc.l+":"+(n===null?"--":n<0?"EXP":n+"j")+"</span>";}).join("");
+    vDocH+="</div>";
   });
-  if(!c.vehicles.length)vDocH='<p style="color:#6b6f96;font-size:13px">Aucun vehicule</p>';
+  if(!c.vehicles.length) vDocH='<p style="color:#6b6f96;font-size:13px">Aucun vehicule enregistre</p>';
 
-  var ncH=c.nc.filter(function(n){return n.status==="OPEN";}).slice(0,4).map(function(n){return '<div style="padding:6px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between;align-items:center"><div><p style="margin:0;font-size:12px;font-weight:600">'+xe(String(n.description||"").substring(0,35))+"</p><p style=\"margin:0;font-size:11px;color:#6b6f96\">"+xe(n.source||"")+"</p></div>"+ebdg(n.dueDate)+"</div>";}).join()||'<p style="color:#6b6f96;font-size:13px">Aucune NC ouverte</p>';
+  // ── NC list ──────────────────────────────────────────────────
+  var ncH=c.nc.filter(function(n){return n.status==="OPEN";}).slice(0,4).map(function(n){
+    return '<div style="padding:6px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between;align-items:center"><div><p style="margin:0;font-size:12px;font-weight:600">'+xe(String(n.description||"").substring(0,35))+'</p><p style="margin:0;font-size:11px;color:#6b6f96">'+xe(n.source||"")+"</p></div>"+ebdg(n.dueDate)+"</div>";
+  }).join("")||'<p style="color:#6b6f96;font-size:13px">Aucune NC ouverte</p>';
 
-  var sitesH=S.sites.length?S.sites.map(function(s){return '<div style="padding:5px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between"><div><p style="margin:0;font-size:12px;font-weight:600">'+xe(s.name)+"</p><p style=\"margin:0;font-size:10px;color:#6b6f96\">"+xe(s.city||"")+"</p></div></div>";}).join():'<p style="color:#6b6f96;font-size:13px">Aucun site</p>';
+  // ── Actions retard list ──────────────────────────────────────
+  var actLateH=c.actions.filter(function(a){return a.status==="OVERDUE";}).slice(0,4).map(function(a){
+    return '<div style="padding:6px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><p style="margin:0;font-size:12px;font-weight:600;color:#ef4444">'+xe(String(a.title||"").substring(0,35))+'</p>'
+      +'<p style="margin:0;font-size:11px;color:#6b6f96">'+xe(a.responsible||"--")+"</p></div>"+ebdg(a.dueDate)+"</div>";
+  }).join("")||'<p style="color:#22c55e;font-size:13px;font-weight:600">✓ Aucune action en retard</p>';
 
-  // Build alerts summary for dashboard
-    // Alerts summary built after put() to avoid quote nesting
-  var alertSummaryH = "";
-  // (injected into DOM after render)
-  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:19px;font-weight:800;margin:0">Tableau de bord</h1><p style="color:#6b6f96;font-size:12px;margin:2px 0 0">'+xe(S.user.name||"")+(S.user.company?" - "+xe(S.user.company):"")+'</p><div class="cloud-badge" style="margin-top:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>Donnees synchronisees sur Supabase</div><button onclick="testDB()" style="margin-top:6px;background:#232640;border:1px solid #4f6ef730;border-radius:6px;padding:4px 10px;color:#4f6ef7;font-size:11px;cursor:pointer;font-family:inherit">Tester la connexion BD</button></div><div class="gkpi">'+kH+'</div><div class="gcards"><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Vehicules - Documents</h3>'+vDocH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">NC ouvertes</h3>'+ncH+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 11px">Mes sites</h3>'+sitesH+"</div></div></div>");
-  // Build alerts summary in DOM (avoids quote nesting)
+  // ── Build the full dashboard HTML ────────────────────────────
+  var html = '<div class="fi">'
+
+  // Header
+  +'<div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">'
+  +'<div>'
+  +'<h1 style="font-size:21px;font-weight:900;margin:0">Tableau de bord</h1>'
+  +'<p style="color:#6b6f96;font-size:12px;margin:3px 0 0">'+xe(S.user.name||"")+(S.user.company?" · "+xe(S.user.company):"")+'</p>'
+  +'<div class="cloud-badge" style="margin-top:6px"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>Donnees synchronisees</div>'
+  +'</div>'
+  +'<button onclick="testDB()" style="background:#232640;border:1px solid #4f6ef730;border-radius:6px;padding:5px 10px;color:#4f6ef7;font-size:11px;cursor:pointer;font-family:inherit">Tester BD</button>'
+  +'</div>'
+
+  // KPI grid
+  +'<div class="gkpi" style="margin-bottom:20px">'+kH+'</div>'
+
+  // ── Row 1: Tendances incidents + Répartition risques ──────────
+  +'<div class="gcards" style="margin-bottom:16px">'
+
+  // Incidents trend (6 months bar chart)
+  +'<div class="card">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+  +'<div><p style="margin:0;font-size:12px;font-weight:700">Incidents — 6 derniers mois</p>'
+  +'<p style="margin:0;font-size:10px;color:#6b6f96">Evolution mensuelle</p></div>'
+  +'<span class="bdg" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">'+c.incidents.length+' total</span>'
+  +'</div>'
+  +miniBarChart(c.incidents,'date','#ef4444','Incidents')
+  +'<div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">'
+  +['CRITICAL','HIGH','MEDIUM','LOW'].map(function(s,i){var cols=['#dc2626','#ea580c','#d97706','#16a34a'];var n=c.incidents.filter(function(r){return r.severity===s;}).length;return '<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;background:'+cols[i]+';border-radius:2px"></div><span style="font-size:10px;color:#6b6f96">'+s+': <b style="color:#e2e5f5">'+n+'</b></span></div>';}).join('')
+  +'</div></div>'
+
+  // Risks donut + breakdown
+  +'<div class="card">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+  +'<div><p style="margin:0;font-size:12px;font-weight:700">Risques DUER</p>'
+  +'<p style="margin:0;font-size:10px;color:#6b6f96">Repartition par niveau</p></div>'
+  +'<span class="bdg" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">'+rTotal+' risques</span>'
+  +'</div>'
+  +'<div style="display:flex;align-items:center;gap:16px">'
+  +'<div style="position:relative;flex-shrink:0">'
+  +donut(rTotal?Math.round((rC+rH)/rTotal*100):0,'#ef4444',80,12)
+  +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">'
+  +'<p style="margin:0;font-size:16px;font-weight:900;color:#ef4444">'+(rTotal?Math.round((rC+rH)/rTotal*100):0)+'%</p>'
+  +'<p style="margin:0;font-size:8px;color:#6b6f96">C+H</p></div></div>'
+  +'<div style="flex:1">'
+  +[{l:'CRITICAL',v:rC,c:'#dc2626'},{l:'HIGH',v:rH,c:'#ea580c'},{l:'MEDIUM',v:rM,c:'#d97706'},{l:'LOW',v:rL,c:'#16a34a'}].map(function(item){
+    var pct=rTotal?Math.round(item.v/rTotal*100):0;
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<span style="font-size:10px;color:#6b6f96;width:55px;flex-shrink:0">'+item.l+'</span>'
+      +'<div style="flex:1;height:10px;background:#232640;border-radius:5px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+item.c+';border-radius:5px"></div></div>'
+      +'<span style="font-size:11px;font-weight:700;color:'+item.c+';width:20px;text-align:right">'+item.v+'</span></div>';
+  }).join('')
+  +'</div></div></div>'
+
+  // ── Row 2: Actions status + Conformité radar ─────────────────
+  // Actions breakdown
+  +'<div class="card">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+  +'<div><p style="margin:0;font-size:12px;font-weight:700">Plan d\'actions</p>'
+  +'<p style="margin:0;font-size:10px;color:#6b6f96">Avancement global</p></div>'
+  +'<span class="bdg" style="background:#7c5cf620;color:#7c5cf6;border:1px solid #7c5cf640">'+actR+'% complet</span>'
+  +'</div>'
+  +'<div style="display:flex;align-items:center;gap:14px">'
+  +'<div style="position:relative;flex-shrink:0">'
+  +donut(actR,'#22c55e',80,12)
+  +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">'
+  +'<p style="margin:0;font-size:16px;font-weight:900;color:#22c55e">'+actR+'%</p>'
+  +'<p style="margin:0;font-size:8px;color:#6b6f96">clot.</p></div></div>'
+  +'<div style="flex:1">'
+  +[{l:'Completees',v:actDone,c:'#22c55e'},{l:'En cours',v:aInProg,c:'#3b82f6'},{l:'Planifiees',v:aPlan,c:'#6b7280'},{l:'En retard',v:aOver,c:'#ef4444'},{l:'Annulees',v:aCanc,c:'#374151'}].map(function(item){
+    var pct=actTotal?Math.round(item.v/actTotal*100):0;
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'
+      +'<span style="font-size:10px;color:#6b6f96;width:60px;flex-shrink:0">'+item.l+'</span>'
+      +'<div style="flex:1;height:8px;background:#232640;border-radius:4px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+item.c+';border-radius:4px"></div></div>'
+      +'<span style="font-size:11px;font-weight:700;color:'+item.c+';width:18px;text-align:right">'+item.v+'</span></div>';
+  }).join('')
+  +'</div></div>'
+  +'<div style="margin-top:12px">'+miniBarChart(c.actions.filter(function(a){return a.status==="COMPLETED";}),'created_at','#22c55e')+'</div>'
+  +'</div>'
+
+  // Conformity radar
+  +'<div class="card">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+  +'<div><p style="margin:0;font-size:12px;font-weight:700">Conformite globale</p>'
+  +'<p style="margin:0;font-size:10px;color:#6b6f96">Par domaine QHSE</p></div>'
+  +'</div>'
+  +'<div style="display:flex;align-items:center;gap:12px">'
+  +radarChart(radarData)
+  +'<div style="flex:1">'
+  +radarData.map(function(item){
+    var c2=item.v>=80?'#22c55e':item.v>=60?'#f59e0b':'#ef4444';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
+      +'<span style="font-size:10px;color:#6b6f96;width:42px;flex-shrink:0">'+item.l+'</span>'
+      +'<div style="flex:1;height:8px;background:#232640;border-radius:4px;overflow:hidden">'
+      +'<div style="height:100%;width:'+(item.v||0)+'%;background:'+c2+';border-radius:4px"></div></div>'
+      +'<span style="font-size:11px;font-weight:700;color:'+c2+';width:28px;text-align:right">'+(item.v||0)+'%</span></div>';
+  }).join('')
+  +'</div></div></div>'
+
+  +'</div>' // close gcards row 1+2
+
+  // ── Row 3: NC trend + Formations trend ───────────────────────
+  +'<div class="gcards" style="margin-bottom:16px">'
+
+  +'<div class="card">'
+  +'<p style="margin:0 0 10px;font-size:12px;font-weight:700">Nouvelles NC — 6 mois</p>'
+  +lineChart(ncSeries,'#ec4899',60)
+  +'<div style="display:flex;gap:4px;margin-top:4px">'+ncSeries.map(function(d){return '<span style="flex:1;text-align:center;font-size:9px;color:#6b6f96">'+d.l+'</span>';}).join('')+'</div>'
+  +'</div>'
+
+  +'<div class="card">'
+  +'<p style="margin:0 0 10px;font-size:12px;font-weight:700">Formations completees — 6 mois</p>'
+  +lineChart(trainSeries,'#22c55e',60)
+  +'<div style="display:flex;gap:4px;margin-top:4px">'+trainSeries.map(function(d){return '<span style="flex:1;text-align:center;font-size:9px;color:#6b6f96">'+d.l+'</span>';}).join('')+'</div>'
+  +'</div>'
+
+  // Employees health donut
+  +'<div class="card">'
+  +'<p style="margin:0 0 12px;font-size:12px;font-weight:700">Employes — Sante & Statuts</p>'
+  +'<div style="display:flex;align-items:center;gap:14px">'
+  +'<div style="position:relative;flex-shrink:0">'
+  +donut(empActif&&nbEmp?Math.round(empActif/nbEmp*100):0,'#4f6ef7',72,10)
+  +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">'
+  +'<p style="margin:0;font-size:14px;font-weight:900;color:#4f6ef7">'+nbEmp+'</p>'
+  +'<p style="margin:0;font-size:8px;color:#6b6f96">total</p></div></div>'
+  +'<div style="flex:1">'
+  +[{l:'Actifs',v:empActif,c:'#22c55e'},{l:'Conge',v:c.employees.filter(function(e){return e.status==='EN CONGE';}).length,c:'#3b82f6'},{l:'Formation',v:c.employees.filter(function(e){return e.status==='EN FORMATION';}).length,c:'#7c5cf6'},{l:'Inactifs',v:c.employees.filter(function(e){return e.status==='INACTIVE';}).length,c:'#6b7280'}].map(function(item){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+      +'<span style="font-size:11px;color:#6b6f96">'+item.l+'</span>'
+      +'<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px;font-weight:700;color:'+item.c+'">'+item.v+'</span>'
+      +'<div style="width:30px;height:6px;background:#232640;border-radius:3px;overflow:hidden">'
+      +'<div style="height:100%;width:'+(nbEmp?Math.round(item.v/nbEmp*100):0)+'%;background:'+item.c+';border-radius:3px"></div></div></div></div>';
+  }).join('')
+  +'<div style="margin-top:8px;padding:6px 8px;background:#4f6ef710;border-radius:6px">'
+  +'<p style="margin:0;font-size:10px;color:#4f6ef7">Visites med. a jour: <b>'+medOk+'/'+empActif+'</b></p>'
+  +'</div>'
+  +'</div></div></div>'
+
+  +'</div>' // close gcards row 3
+
+  // ── Row 4: Env trends + Vehicle expiry + Actions retard ───────
+  +'<div class="gcards" style="margin-bottom:16px">'
+
+  // Env energy trend
+  +(envESeries.length>=2
+    ?'<div class="card"><p style="margin:0 0 10px;font-size:12px;font-weight:700">Energie — Tendance</p>'
+    +lineChart(envESeries,'#f59e0b',55)
+    +'<div style="display:flex;gap:3px;margin-top:4px">'+envESeries.map(function(d){return '<span style="flex:1;text-align:center;font-size:8px;color:#6b6f96;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+xe(d.l).substring(0,5)+'</span>';}).join('')+'</div></div>'
+    :'')
+
+  // Vehicle docs status
+  +'<div class="card">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+  +'<p style="margin:0;font-size:12px;font-weight:700">Documents vehicules</p>'
+  +'<button onclick="goto(\'vehicles\')" style="color:#4f6ef7;background:none;border:none;cursor:pointer;font-size:11px;font-family:inherit">Voir tout</button>'
+  +'</div>'
+  +stackedBar([{l:'Expires',v:vExp,c:'#ef4444'},{l:'< 30j',v:vWarn,c:'#f59e0b'},{l:'OK',v:vOk,c:'#22c55e'}],vExp+vWarn+vOk)
+  +'<div style="margin-top:10px">'+vDocH+'</div>'
+  +'</div>'
+
+  // Actions en retard
+  +'<div class="card">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+  +'<p style="margin:0;font-size:12px;font-weight:700;color:#ef4444">Actions en retard</p>'
+  +'<span class="bdg" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">'+aOver+'</span>'
+  +'</div>'
+  +actLateH
+  +(aOver>4?'<button onclick="goto(\'actions\')" style="margin-top:8px;color:#4f6ef7;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">Voir toutes</button>':'')
+  +'</div>'
+
+  // NC ouvertes
+  +'<div class="card">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+  +'<p style="margin:0;font-size:12px;font-weight:700">Non-Conformites ouvertes</p>'
+  +'<span class="bdg" style="background:#ec489920;color:#ec4899;border:1px solid #ec489940">'+oN+'</span>'
+  +'</div>'
+  +ncH
+  +(oN>4?'<button onclick="goto(\'nc\')" style="margin-top:8px;color:#4f6ef7;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">Voir toutes</button>':'')
+  +'</div>'
+
+  +'</div>' // close gcards row 4
+
+  // ── Row 5: Fire + Upcoming meetings ───────────────────────────
+  +'<div class="gcards" style="margin-bottom:16px">'
+
+  // Fire status
+  +'<div class="card">'
+  +'<p style="margin:0 0 12px;font-size:12px;font-weight:700">Securite incendie</p>'
+  +'<div style="display:flex;align-items:center;gap:14px">'
+  +'<div style="position:relative;flex-shrink:0">'
+  +donut(nbFire?Math.round(fireOk/nbFire*100):100,'#f97316',72,10)
+  +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">'
+  +'<p style="margin:0;font-size:14px;font-weight:900;color:#f97316">'+nbFire+'</p>'
+  +'<p style="margin:0;font-size:8px;color:#6b6f96">equip.</p>'
+  +'</div></div>'
+  +'<div style="flex:1">'
+  +[{l:'OK',v:fireOk,c:'#22c55e'},{l:'Non conf.',v:nF,c:'#ef4444'},{l:'Partiel',v:c.fire.filter(function(f){return f.status==='PARTIEL';}).length,c:'#f59e0b'},{l:'En attente',v:c.fire.filter(function(f){return f.status==='EN ATTENTE';}).length,c:'#6b7280'}].map(function(item){
+    return '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:#6b6f96">'+item.l+'</span><span style="font-size:12px;font-weight:700;color:'+item.c+'">'+item.v+'</span></div>';
+  }).join('')
+  +'</div></div></div>'
+
+  // Upcoming meetings
+  +'<div class="card">'
+  +'<p style="margin:0 0 12px;font-size:12px;font-weight:700">Reunions a venir</p>'
+  +(c.meetings.filter(function(m){return m.status==='PLANNED';}).length
+    ?c.meetings.filter(function(m){return m.status==='PLANNED';}).slice(0,4).map(function(m){
+      var d=dl(m.date); var dc=d===null?'#6b6f96':d<0?'#ef4444':d===0?'#22c55e':d<=3?'#f59e0b':'#4f6ef7';
+      return '<div style="padding:7px 0;border-bottom:1px solid #232640;display:flex;justify-content:space-between;align-items:center">'
+        +'<div><p style="margin:0;font-size:12px;font-weight:600">'+xe(m.title||"--")+'</p>'
+        +'<p style="margin:0;font-size:10px;color:#6b6f96">'+xe(m.date||"")+" · "+xe(m.chairman||"")+'</p></div>'
+        +ebdg(m.date)+'</div>';
+    }).join('')
+    :'<p style="color:#6b6f96;font-size:13px">Aucune reunion planifiee</p>')
+  +'</div>'
+
+  +'</div>' // close gcards row 5
+
+  +'</div>'; // close fi
+
+  put(html);
+
+  // Build alerts summary in DOM
   if(allAlerts.length > 0) {
     var dashEl = document.getElementById("pc");
     var alertsDiv = document.createElement("div");
-    alertsDiv.style.cssText = "margin-bottom:14px";
+    alertsDiv.style.cssText = "margin-bottom:16px";
     var hdr = document.createElement("div");
     hdr.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px";
-    var h3 = document.createElement("h3");
-    h3.style.cssText = "margin:0;font-size:13px;font-weight:700;color:#ef4444";
-    h3.textContent = "Alertes actives (" + allAlerts.length + ")";
-    var btn = document.createElement("button");
-    btn.style.cssText = "color:#4f6ef7;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit";
-    btn.textContent = "Voir tout";
-    btn.onclick = togNotif;
-    hdr.appendChild(h3); hdr.appendChild(btn);
+    var h3el = document.createElement("h3");
+    h3el.style.cssText = "margin:0;font-size:13px;font-weight:700;color:#ef4444";
+    h3el.textContent = "Alertes actives (" + allAlerts.length + ")";
+    var vbtn = document.createElement("button");
+    vbtn.style.cssText = "color:#4f6ef7;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit";
+    vbtn.textContent = "Voir tout";
+    vbtn.onclick = togNotif;
+    hdr.appendChild(h3el); hdr.appendChild(vbtn);
     alertsDiv.appendChild(hdr);
+    var ag = document.createElement("div");
+    ag.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px";
     allAlerts.slice(0,6).forEach(function(a){
       var row = document.createElement("div");
-      row.style.cssText = "background:#ef444408;border:1px solid #ef444418;border-radius:8px;padding:8px 12px;margin-bottom:5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center";
+      row.style.cssText = "background:#ef444408;border:1px solid #ef444418;border-radius:8px;padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center";
       row.onmouseover = function(){row.style.background="#ef444415";};
       row.onmouseout = function(){row.style.background="#ef444408";};
-      var mod = a.mod;
-      row.onclick = function(){goto(mod);};
+      var mod = a.mod; row.onclick = function(){goto(mod);};
       var dLabel = a.days===null?"":a.days<0?"Expire":a.days===0?"Auj.":a.days+"j";
-      var left = document.createElement("div");
-      var tp = document.createElement("p");
-      tp.style.cssText = "margin:0;font-size:12px;font-weight:600;color:"+a.color;
-      tp.textContent = a.text;
-      var sp2 = document.createElement("p");
-      sp2.style.cssText = "margin:0;font-size:10px;color:#6b6f96";
-      sp2.textContent = a.sub||"";
-      left.appendChild(tp); left.appendChild(sp2);
-      row.appendChild(left);
-      if(dLabel){var badge2=document.createElement("span");badge2.style.cssText="font-size:11px;font-weight:700;color:"+a.color+";flex-shrink:0;margin-left:8px";badge2.textContent=dLabel;row.appendChild(badge2);}
-      alertsDiv.appendChild(row);
+      var left = document.createElement("div"); left.style.flex="1";
+      var tp = document.createElement("p"); tp.style.cssText="margin:0;font-size:11px;font-weight:600;color:"+a.color; tp.textContent=a.text;
+      var sp2 = document.createElement("p"); sp2.style.cssText="margin:0;font-size:10px;color:#6b6f96"; sp2.textContent=a.sub||"";
+      left.appendChild(tp); left.appendChild(sp2); row.appendChild(left);
+      if(dLabel){var badge2=document.createElement("span");badge2.style.cssText="font-size:10px;font-weight:700;color:"+a.color+";flex-shrink:0;margin-left:6px;background:"+a.color+"22;padding:2px 6px;border-radius:10px";badge2.textContent=dLabel;row.appendChild(badge2);}
+      ag.appendChild(row);
     });
-    // Insert at top of fi div
-    var fiDiv = dashEl.querySelector(".fi");
+    alertsDiv.appendChild(ag);
+    var fiDiv = dashEl ? dashEl.querySelector(".fi") : null;
     if(fiDiv && fiDiv.firstChild) fiDiv.insertBefore(alertsDiv, fiDiv.firstChild);
   }
-
 }
 
 async function testDB() {
