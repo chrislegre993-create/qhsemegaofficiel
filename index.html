@@ -318,7 +318,16 @@ create trigger on_auth_user_created
     <button onclick="togGS()" class="tbtn" title="Ctrl+K">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
     </button>
-    <button onclick="togTheme()" class="tbtn">
+    <div style="position:relative" id="lang-dd-wrap">
+    <button onclick="togLangDD()" class="tbtn" id="lang-btn" title="Language">
+      <span id="lang-flag">🇫🇷</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+    </button>
+    <div id="lang-dd" style="display:none;position:absolute;right:0;top:38px;background:#131620;border:1px solid #232640;border-radius:10px;box-shadow:0 8px 24px #000000aa;z-index:2000;min-width:140px;overflow:hidden">
+      <div id="lang-list"></div>
+    </div>
+  </div>
+  <button onclick="togTheme()" class="tbtn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" id="thico"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/></svg>
     </button>
     <div style="position:relative">
@@ -348,11 +357,11 @@ create trigger on_auth_user_created
       <div class="nfoot">
         <button class="ni" onclick="goto('profile')" style="width:100%">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-          <span>Mon profil</span>
+          <span id="nav-profile">Mon profil</span>
         </button>
         <button class="ni" onclick="doLogout()" style="color:#ef4444;width:100%">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
-          <span>Déconnexion</span>
+          <span id="logout-lbl">Deconnexion</span>
         </button>
       </div>
     </aside>
@@ -384,7 +393,7 @@ create trigger on_auth_user_created
     <div id="mmsg" style="display:none;margin-bottom:10px"></div>
     <div id="mflds" class="g2"></div>
     <div id="mbtns" style="display:flex;gap:9px;justify-content:flex-end;margin-top:10px">
-      <button onclick="closeMod()" class="btn bg0">Annuler</button>
+      <button onclick="closeMod()" class="btn bg0">'+t("cancel")+'</button>
       <button id="msave" class="btn bp">Enregistrer</button>
     </div>
   </div>
@@ -639,6 +648,249 @@ function syncEnd(ok) {
 var S = {user:null, pg:"dashboard", search:"", dark:true, aiOpen:false, aiMsgs:[], aiLoad:false, notif:false, mkey:null, eid:null, sites:[], gsOpen:false};
 
 // ================================================================
+// LANGUAGE SYSTEM
+// ================================================================
+var LANGS = {
+  fr: {
+    // Nav
+    dashboard:"Tableau de bord", incidents:"Incidents", audits:"Audits",
+    risks:"Risques / DUER", ppe:"EPI et Equipements", fire:"Securite Incendie",
+    vehicles:"Vehicules", meetings:"Reunions Securite", nc:"Non-Conformites",
+    actions:"Plan d Actions", documents:"Documents", docsImport:"Import PDF",
+    employees:"Employes", training:"Formations", environment:"Environnement",
+    analytics:"Analytique et KPIs", rapport:"Rapport Mensuel",
+    sites:"Mes sites et Lieux", settings:"Parametres",
+    // UI
+    new_record:"Nouveau", save:"Enregistrer", cancel:"Annuler", edit:"Modifier",
+    delete:"Supprimer", search:t("search"), export_csv:"CSV",
+    import_excel:"Excel/CSV", loading:"Chargement...", no_records:"Aucun enregistrement",
+    confirm_delete:"Supprimer cet element ?", error:"Erreur", success:"Enregistre",
+    logout:"Deconnexion", profile:"Mon profil", theme:"Theme",
+    dark:"Sombre", light:"Clair", language:"Langue", save_config:"Sauvegarder config",
+    // Dashboard
+    db_title:"Tableau de bord", db_sync:"Donnees synchronisees",
+    test_db:"Tester BD", alerts_active:"Alertes actives",
+    see_all:"Voir tout", no_alerts:"Aucune alerte active",
+    // Auth
+    login:"Se connecter", register:"Creer un compte", email:"Email",
+    password:"Mot de passe", confirm_password:"Confirmer", full_name:"Nom complet",
+    company:"Entreprise", forgot_password:"Mot de passe oublie ?",
+    login_error:"Email ou mot de passe incorrect",
+    register_success:"Compte cree!",
+    // Settings
+    settings_title:"Parametres", theme_title:"Theme",
+    supabase_title:"Connexion Supabase", about_title:"A propos",
+    reconfigure:"Reconfigurer", version:"Version", backend:"Backend",
+    auth_type:"Authentification", modules_count:"Modules",
+    // Months
+    months:["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"],
+    months_short:["Jan","Fev","Mar","Avr","Mai","Jun","Jul","Aou","Sep","Oct","Nov","Dec"],
+    // Rapport
+    rapport_title:"Rapport Mensuel QHSE", manager_email:"Email du manager",
+    manager_name:"Nom du manager", your_name:"Votre nom / Responsable QHSE",
+    generate:"Generer le rapport", print_pdf:"Imprimer / PDF",
+    send_email:"Envoyer par email", copy_text:"Copier texte",
+    // Alerts
+    expired:"Expire", today:"Auj.", days_left:"j",
+    expire_badge:"EXPIRE", active_badge:"ACTIF",
+    // Status
+    open:"OPEN", closed:"CLOSED", in_progress:"IN PROGRESS",
+    planned:"PLANNED", completed:"COMPLETED", overdue:"OVERDUE",
+    critical:"CRITICAL", high:"HIGH", medium:"MEDIUM", low:"LOW",
+  },
+  en: {
+    // Nav
+    dashboard:"Dashboard", incidents:"Incidents", audits:"Audits",
+    risks:"Risks / DUER", ppe:"PPE & Equipment", fire:"Fire Safety",
+    vehicles:"Vehicles", meetings:"Safety Meetings", nc:"Non-Conformities",
+    actions:"Action Plan", documents:"Documents", docsImport:"PDF Import",
+    employees:"Employees", training:"Training", environment:"Environment",
+    analytics:"Analytics & KPIs", rapport:"Monthly Report",
+    sites:"My Sites", settings:"Settings",
+    // UI
+    new_record:"New", save:"Save", cancel:"Cancel", edit:"Edit",
+    delete:"Delete", search:"Search...", export_csv:"CSV",
+    import_excel:"Excel/CSV", loading:"Loading...", no_records:"No records found",
+    confirm_delete:"Delete this item?", error:"Error", success:"Saved",
+    logout:"Sign out", profile:"My profile", theme:"Theme",
+    dark:"Dark", light:"Light", language:"Language", save_config:"Save config",
+    // Dashboard
+    db_title:"Dashboard", db_sync:"Data synchronized",
+    test_db:"Test DB", alerts_active:"Active alerts",
+    see_all:"See all", no_alerts:"No active alerts",
+    // Auth
+    login:"Sign in", register:"Create account", email:"Email",
+    password:"Password", confirm_password:"Confirm", full_name:"Full name",
+    company:"Company", forgot_password:"Forgot password?",
+    login_error:"Incorrect email or password",
+    register_success:"Account created!",
+    // Settings
+    settings_title:"Settings", theme_title:"Theme",
+    supabase_title:"Supabase Connection", about_title:"About",
+    reconfigure:"Reconfigure", version:"Version", backend:"Backend",
+    auth_type:"Authentication", modules_count:"Modules",
+    // Months
+    months:["January","February","March","April","May","June","July","August","September","October","November","December"],
+    months_short:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+    // Rapport
+    rapport_title:"Monthly QHSE Report", manager_email:"Manager email",
+    manager_name:"Manager name", your_name:"Your name / QHSE Manager",
+    generate:"Generate report", print_pdf:"Print / PDF",
+    send_email:"Send by email", copy_text:"Copy text",
+    // Alerts
+    expired:"Expired", today:"Today", days_left:"d",
+    expire_badge:"EXPIRED", active_badge:"ACTIVE",
+    // Status
+    open:"OPEN", closed:"CLOSED", in_progress:"IN PROGRESS",
+    planned:"PLANNED", completed:"COMPLETED", overdue:"OVERDUE",
+    critical:"CRITICAL", high:"HIGH", medium:"MEDIUM", low:"LOW",
+  },
+  es: {
+    // Nav
+    dashboard:"Panel principal", incidents:"Incidentes", audits:"Auditorias",
+    risks:"Riesgos / DUER", ppe:"EPP y Equipos", fire:"Seguridad contra incendios",
+    vehicles:"Vehiculos", meetings:"Reuniones de seguridad", nc:"No conformidades",
+    actions:"Plan de acciones", documents:"Documentos", docsImport:"Importar PDF",
+    employees:"Empleados", training:"Formaciones", environment:"Medio ambiente",
+    analytics:"Analitica y KPIs", rapport:"Informe mensual",
+    sites:"Mis sitios", settings:"Configuracion",
+    // UI
+    new_record:"Nuevo", save:"Guardar", cancel:"Cancelar", edit:"Editar",
+    delete:"Eliminar", search:"Buscar...", export_csv:"CSV",
+    import_excel:"Excel/CSV", loading:"Cargando...", no_records:"Sin registros",
+    confirm_delete:"Eliminar este elemento?", error:"Error", success:"Guardado",
+    logout:"Cerrar sesion", profile:"Mi perfil", theme:"Tema",
+    dark:"Oscuro", light:"Claro", language:"Idioma", save_config:"Guardar configuracion",
+    // Dashboard
+    db_title:"Panel principal", db_sync:"Datos sincronizados",
+    test_db:"Probar BD", alerts_active:"Alertas activas",
+    see_all:"Ver todo", no_alerts:"Sin alertas activas",
+    // Auth
+    login:"Iniciar sesion", register:"Crear cuenta", email:"Correo electronico",
+    password:"Contrasena", confirm_password:"Confirmar", full_name:"Nombre completo",
+    company:"Empresa", forgot_password:"Olvide mi contrasena",
+    login_error:"Correo o contrasena incorrectos",
+    register_success:"Cuenta creada!",
+    // Settings
+    settings_title:"Configuracion", theme_title:"Tema",
+    supabase_title:"Conexion Supabase", about_title:"Acerca de",
+    reconfigure:"Reconfigurar", version:"Version", backend:"Backend",
+    auth_type:"Autenticacion", modules_count:"Modulos",
+    // Months
+    months:["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
+    months_short:["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],
+    // Rapport
+    rapport_title:"Informe mensual QHSE", manager_email:"Email del gerente",
+    manager_name:"Nombre del gerente", your_name:"Su nombre / Responsable QHSE",
+    generate:"Generar informe", print_pdf:"Imprimir / PDF",
+    send_email:"Enviar por correo", copy_text:"Copiar texto",
+    // Alerts
+    expired:"Vencido", today:"Hoy", days_left:"d",
+    expire_badge:"VENCIDO", active_badge:"ACTIVO",
+    // Status
+    open:"ABIERTO", closed:"CERRADO", in_progress:"EN CURSO",
+    planned:"PLANIFICADO", completed:"COMPLETADO", overdue:"ATRASADO",
+    critical:"CRITICO", high:"ALTO", medium:"MEDIO", low:"BAJO",
+  },
+  pt: {
+    // Nav
+    dashboard:"Painel principal", incidents:"Incidentes", audits:"Auditorias",
+    risks:"Riscos / DUER", ppe:"EPI e Equipamentos", fire:"Seguranca contra incendio",
+    vehicles:"Veiculos", meetings:"Reunioes de seguranca", nc:"Nao conformidades",
+    actions:"Plano de acoes", documents:"Documentos", docsImport:"Importar PDF",
+    employees:"Funcionarios", training:"Formacoes", environment:"Meio ambiente",
+    analytics:"Analitica e KPIs", rapport:"Relatorio mensal",
+    sites:"Meus locais", settings:"Configuracoes",
+    // UI
+    new_record:"Novo", save:"Salvar", cancel:"Cancelar", edit:"Editar",
+    delete:"Excluir", search:"Pesquisar...", export_csv:"CSV",
+    import_excel:"Excel/CSV", loading:"Carregando...", no_records:"Nenhum registro",
+    confirm_delete:"Excluir este item?", error:"Erro", success:"Salvo",
+    logout:"Sair", profile:"Meu perfil", theme:"Tema",
+    dark:"Escuro", light:"Claro", language:"Idioma", save_config:"Salvar configuracao",
+    // Dashboard
+    db_title:"Painel principal", db_sync:"Dados sincronizados",
+    test_db:"Testar BD", alerts_active:"Alertas ativos",
+    see_all:"Ver tudo", no_alerts:"Sem alertas ativos",
+    // Auth
+    login:"Entrar", register:"Criar conta", email:"Email",
+    password:"Senha", confirm_password:"Confirmar", full_name:"Nome completo",
+    company:"Empresa", forgot_password:"Esqueci a senha",
+    login_error:"Email ou senha incorretos",
+    register_success:"Conta criada!",
+    // Settings
+    settings_title:"Configuracoes", theme_title:"Tema",
+    supabase_title:"Conexao Supabase", about_title:"Sobre",
+    reconfigure:"Reconfigurar", version:"Versao", backend:"Backend",
+    auth_type:"Autenticacao", modules_count:"Modulos",
+    // Months
+    months:["Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],
+    months_short:["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
+    // Rapport
+    rapport_title:"Relatorio mensal QHSE", manager_email:"Email do gerente",
+    manager_name:"Nome do gerente", your_name:"Seu nome / Responsavel QHSE",
+    generate:"Gerar relatorio", print_pdf:"Imprimir / PDF",
+    send_email:"Enviar por email", copy_text:"Copiar texto",
+    // Alerts
+    expired:"Vencido", today:"Hoje", days_left:"d",
+    expire_badge:"VENCIDO", active_badge:"ATIVO",
+    // Status
+    open:"ABERTO", closed:"FECHADO", in_progress:"EM ANDAMENTO",
+    planned:"PLANEJADO", completed:"CONCLUIDO", overdue:"ATRASADO",
+    critical:"CRITICO", high:"ALTO", medium:"MEDIO", low:"BAIXO",
+  }
+};
+
+// Current language (default: fr)
+var CL = (function(){
+  try { return localStorage.getItem("qhse_lang") || "fr"; } catch(e){ return "fr"; }
+})();
+
+// Get translation
+function t(key) {
+  var lang = LANGS[CL] || LANGS.fr;
+  return lang[key] || LANGS.fr[key] || key;
+}
+
+// Get months array in current language
+function tMonths() { return (LANGS[CL]||LANGS.fr).months; }
+function tMonthsShort() { return (LANGS[CL]||LANGS.fr).months_short; }
+
+// Set language
+function setLang(code) {
+  CL = code;
+  try { localStorage.setItem("qhse_lang", code); } catch(e){}
+  // Update NAV labels
+  NAV.forEach(function(item) {
+    var tr = t(item.k);
+    if (tr && tr !== item.k) item.l = tr;
+  });
+  // Re-render current page
+  mkNav();
+  goto(S.pg);
+  toast("Language: " + {fr:"Francais",en:"English",es:"Espanol",pt:"Portugues"}[code]);
+  setTimeout(applyLangToUI, 100);
+}
+
+// Lang flag+name
+var LANG_OPTIONS = [
+  {code:"fr", flag:"🇫🇷", name:"Français"},
+  {code:"en", flag:"🇬🇧", name:"English"},
+  {code:"es", flag:"🇪🇸", name:"Español"},
+  {code:"pt", flag:"🇧🇷", name:"Português"},
+];
+
+// Apply language to NAV on init
+(function applyLangToNav(){
+  NAV.forEach(function(item){
+    var tr = (LANGS[CL]||LANGS.fr)[item.k];
+    if(tr) item.l = tr;
+  });
+})();
+
+
+
+// ================================================================
 // UTILS
 // ================================================================
 var BC = {OPEN:"#ef4444",CLOSED:"#22c55e","IN PROGRESS":"#f59e0b",CRITICAL:"#dc2626",HIGH:"#ea580c",MEDIUM:"#d97706",LOW:"#16a34a",PLANNED:"#3b82f6",COMPLETED:"#22c55e",OVERDUE:"#ef4444",ACTIVE:"#22c55e",INACTIVE:"#6b7280",PENDING:"#f59e0b",VALIDE:"#22c55e",EXPIRE:"#ef4444","A RENOUVELER":"#f59e0b",OK:"#22c55e","NON CONFORME":"#ef4444",PARTIEL:"#f59e0b"};
@@ -853,6 +1105,7 @@ async function startApp() {
   document.getElementById("app").style.display = "flex";
   document.getElementById("splash").style.display = "none";
   mkNav();
+  applyLangToUI();
   try {
     await goto("dashboard");
   } catch(e) {
@@ -1464,13 +1717,13 @@ async function testDB() {
 }
 
 async function pgCRUD(mk) {
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
   var def=M[mk];
   var rows=await gRecs(mk);
   var srch=S.search.toLowerCase();
   var filt=srch?rows.filter(function(r){return Object.values(r).some(function(v){return String(v).toLowerCase().indexOf(srch)>=0;});}):rows;
   var ths=def.c.map(function(col){return "<th>"+col.l+"</th>";}).join("")+"<th style=\"width:80px\"></th>";
-  var trs=!filt.length?'<tr><td colspan="'+(def.c.length+1)+'" style="text-align:center;color:#6b6f96;padding:28px">Aucun enregistrement</td></tr>':
+  var trs=!filt.length?'<tr><td colspan="'+(def.c.length+1)+'" style="text-align:center;color:#6b6f96;padding:28px">" + t("no_records") + "</td></tr>':
     filt.map(function(row){
       var bg="";
       if(row.status==="NON CONFORME"||row.status==="EXPIRE")bg="background:#ef444408;";
@@ -1478,7 +1731,7 @@ async function pgCRUD(mk) {
       return '<tr style="'+bg+'">'+tds+'<td><div style="display:flex;gap:3px"><button data-action="edit" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+"</button>"+'<button data-action="del" data-id="'+row.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+"</button></div></td></tr>";
     }).join("");
 
-  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+filt.length+" enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">&#8679; Excel/CSV</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' CSV</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' Nouveau</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder="Rechercher..." value="'+xe(S.search)+'" oninput="S.search=this.value;pgCRUD(\''+mk+'\')" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody>"+trs+"</tbody></table></div></div></div>");
+  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+filt.length+" enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">'+t('import_excel')+'</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' '+t("export_csv")+'</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' '+t("new_record")+'au</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder=t("search") value="'+xe(S.search)+'" oninput="S.search=this.value;pgCRUD(\''+mk+'\')" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody>"+trs+"</tbody></table></div></div></div>");
 }
 
 async function pgSites() {
@@ -1517,7 +1770,7 @@ async function delSiteA(id) {
 }
 
 async function pgDocsImport() {
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
   var docs=await gDocs();
   var rows=docs.map(function(doc){return '<tr><td style="font-weight:600">'+xe(doc.name||"")+"</td><td>"+xe((doc.ext||"").toUpperCase())+"</td><td>"+xe(doc.size||"")+"</td><td>"+xe(doc.date||"")+"</td>"+'<td><div style="display:flex;gap:4px"><button data-action="dldoc" data-id="'+doc.id+'" style="background:#22c55e15;border:1px solid #22c55e30;border-radius:6px;padding:4px 9px;cursor:pointer;color:#22c55e;font-size:11px;font-weight:600;font-family:inherit">Telecharger</button><button data-action="deldoc" data-id="'+doc.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:4px 8px;cursor:pointer;color:#ef4444;display:flex;align-items:center">'+ic("del",12)+"</button></div></td></tr>";}).join("");
   put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic("pdf",22)+"</span><div><h1>Import de documents</h1><p>"+docs.length+" document(s) - stockes sur Supabase</p></div></div></div>"+'<div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:9px;padding:11px 14px;font-size:13px;color:#4f6ef7;margin-bottom:14px">Importez PDF, Word, Excel. Stockes sur votre serveur Supabase.</div><div id="dz-area" class="dz"><div style="font-size:40px;margin-bottom:10px">&#128194;</div><p style="font-weight:700;font-size:15px;margin:0">Glissez vos fichiers ici ou cliquez</p><p style="font-size:12px;color:#6b6f96;margin:5px 0 0">PDF, Word, Excel, Images</p><input type="file" id="fi-doc" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" style="display:none" onchange="handleDocFiles(this.files)"/></div>'+(docs.length?'<div class="card0"><div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Taille</th><th>Importe le</th><th style="width:180px">Actions</th></tr></thead><tbody>'+rows+"</tbody></table></div></div>":'<p style="text-align:center;color:#6b6f96;padding:20px">Aucun document</p>')+"</div>");
@@ -1547,7 +1800,27 @@ async function handleDocFiles(files) {
 }
 
 function pgSettings() {
-  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:18px;font-weight:800;margin:0">Parametres</h1></div><div class="gcards"><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Theme</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+[{k:true,l:"Sombre",i:"moon"},{k:false,l:"Clair",i:"sun"}].map(function(t){var a=S.dark===t.k;return "<button onclick=\"setTh("+t.k+")\" style=\"padding:14px;border-radius:12px;border:2px solid "+(a?"#4f6ef7":"#232640")+";cursor:pointer;background:"+(a?"#4f6ef710":"transparent")+";text-align:left\"><div style=\"display:flex;align-items:center;gap:8px\">"+ic(t.i,16)+"<span style=\"font-size:13px;color:"+(a?"#4f6ef7":"#e2e5f5")+"\">"+t.l+"</span></div></button>";}).join("")+"</div></div>"+'<div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Connexion Supabase</h3><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">URL</span><span style="font-weight:600;font-size:11px;color:#22c55e">Connecte</span></div><button onclick="showSetup()" class="btn bg0" style="width:100%;justify-content:center;margin-top:12px">Reconfigurer</button></div><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">A propos</h3>'+[["Version","5.0 - Cloud"],["Backend","Supabase PostgreSQL"],["Auth","Email/Password"],["Modules","14 modules QHSE"],["Standards","ISO 45001 - 14001 - 9001"]].map(function(r){return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">'+r[0]+"</span><span style=\"font-weight:600\">"+r[1]+"</span></div>";}).join("")+"</div></div></div>");
+  // Build lang cards safely using DOM (avoids onclick quote nesting)
+  var langCardsEl = document.createElement("div");
+  langCardsEl.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:8px";
+  LANG_OPTIONS.forEach(function(opt) {
+    var active = CL === opt.code;
+    var btn = document.createElement("button");
+    btn.style.cssText = "padding:12px 14px;border-radius:10px;border:2px solid "+(active?"#4f6ef7":"#232640")+";cursor:pointer;background:"+(active?"#4f6ef710":"transparent")+";text-align:left;width:100%;display:flex;align-items:center;gap:10px;font-family:inherit";
+    var code = opt.code;
+    btn.onclick = function(){ setLang(code); };
+    btn.innerHTML = '<span style="font-size:22px">'+opt.flag+'</span>'
+      +'<div><p style="margin:0;font-size:13px;font-weight:'+(active?700:500)+';color:'+(active?"#4f6ef7":"#e2e5f5")+'">'+opt.name+'</p>'
+      +'<p style="margin:0;font-size:10px;color:#6b6f96">'+opt.code.toUpperCase()+'</p></div>'
+      +(active?'<div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#4f6ef7;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>':"");
+    langCardsEl.appendChild(btn);
+  });
+  var langCards = "";  // unused now, DOM used directly
+
+  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:18px;font-weight:800;margin:0">Parametres</h1></div><div class="gcards"><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Langue / Language</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+langCards+'</div></div><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Theme</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+[{k:true,l:"Sombre",i:"moon"},{k:false,l:"Clair",i:"sun"}].map(function(t){var a=S.dark===t.k;return "<button onclick=\"setTh("+t.k+")\" style=\"padding:14px;border-radius:12px;border:2px solid "+(a?"#4f6ef7":"#232640")+";cursor:pointer;background:"+(a?"#4f6ef710":"transparent")+";text-align:left\"><div style=\"display:flex;align-items:center;gap:8px\">"+ic(t.i,16)+"<span style=\"font-size:13px;color:"+(a?"#4f6ef7":"#e2e5f5")+"\">"+t.l+"</span></div></button>";}).join("")+"</div></div>"+'<div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Connexion Supabase</h3><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">URL</span><span style="font-weight:600;font-size:11px;color:#22c55e">Connecte</span></div><button onclick="showSetup()" class="btn bg0" style="width:100%;justify-content:center;margin-top:12px">Reconfigurer</button></div><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">A propos</h3>'+[["Version","5.0 - Cloud"],["Backend","Supabase PostgreSQL"],["Auth","Email/Password"],["Modules","14 modules QHSE"],["Standards","ISO 45001 - 14001 - 9001"]].map(function(r){return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">'+r[0]+"</span><span style=\"font-weight:600\">"+r[1]+"</span></div>";}).join("")+"</div></div></div>");
+  // Inject language grid
+  var lgrid = document.getElementById("lang-grid");
+  if(lgrid) lgrid.appendChild(langCardsEl);
 }
 
 function pgProfile() {
@@ -1575,7 +1848,7 @@ async function goto(k) {
   S.pg=k; S.search=""; closeSide(); mkNav();
   var n=NAV.find(function(n){return n.k===k;});
   document.getElementById("ttl").textContent=n?n.l:"Tableau de bord";
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
   try {
     if(k==="dashboard") await pgDash();
     else if(k==="sites") await pgSites();
@@ -1647,7 +1920,7 @@ async function saveMod() {
     return;
   }
   closeMod();
-  toast(S.eid?"Modification enregistree sur le serveur":"Cree et enregistre sur le serveur");
+  toast(t("success") + (S.eid?" ✓":""));
   await pgCRUD(mk);
 }
 async function dRow(id) {
@@ -1675,7 +1948,7 @@ document.addEventListener("click",function(e){
   var id=btn.getAttribute("data-id");
   var mk=btn.getAttribute("data-mk")||S.pg;
   if(act==="edit")oEdit(mk,id);
-  else if(act==="del"){if(confirm("Supprimer?"))dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}
+  else if(act==="del"){if(confirm(t("confirm_delete")))dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}
   else if(act==="create")oCreate(mk);
   else if(act==="csv")csvExp(mk);
   else if(act==="xlsimp")oXLS(mk);
@@ -1683,7 +1956,7 @@ document.addEventListener("click",function(e){
   else if(act==="editsite")oSite(id);
   else if(act==="delsite")delSiteA(id);
   else if(act==="dldoc")downloadDoc(id);
-  else if(act==="deldoc"){if(confirm("Supprimer?"))dDoc(id).then(function(){toast("Supprime");pgDocsImport();});}
+  else if(act==="deldoc"){if(confirm(t("confirm_delete")))dDoc(id).then(function(){toast("Supprime");pgDocsImport();});}
   else if(act==="previewdoc")previewDoc(id);
   else if(act==="printdoc")printDoc(id);
 });
@@ -2050,7 +2323,7 @@ async function doImpRows(mk) {
 // PDF VIEWER & PRINTER (updated pgDocsImport)
 // ================================================================
 async function pgDocsImport() {
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
   var docs=await gDocs();
   var rows=docs.map(function(doc){
     var ico={pdf:"PDF",doc:"DOC",docx:"DOCX",xls:"XLS",xlsx:"XLSX",png:"IMG",jpg:"IMG",jpeg:"IMG"}[doc.ext]||"FILE";
@@ -2506,6 +2779,62 @@ function copyRapportText() {
 // ================================================================
 // UI HELPERS
 // ================================================================
+
+function applyLangToUI() {
+  // Update lang button flag
+  updateLangBtn();
+  // Update auth page tabs if visible
+  var tl = document.getElementById("tl");
+  var tr2 = document.getElementById("tr");
+  if (tl) tl.textContent = t("login");
+  if (tr2) tr2.textContent = t("register");
+  // Update login button
+  var loginBtn = document.querySelector('#fl .btn.bp');
+  if (loginBtn) loginBtn.innerHTML = t("login") + " &rarr;";
+  var regBtn = document.querySelector('#fr .btn.bp');
+  if (regBtn) regBtn.innerHTML = t("register") + " &rarr;";
+  var logoutLbl = document.getElementById('nav-logout');
+  if(logoutLbl) logoutLbl.textContent = t('logout');
+  var profLbl = document.getElementById('nav-profile');
+  if(profLbl) profLbl.textContent = t('profile');
+  // Update topbar title
+  var n = NAV.find(function(n){return n.k===S.pg;});
+  var ttlEl = document.getElementById("ttl");
+  if (ttlEl && n) ttlEl.textContent = t(n.k) || n.l;
+}
+
+function togLangDD() {
+  var dd = document.getElementById("lang-dd");
+  if (!dd) return;
+  if (dd.style.display === "block") { dd.style.display = "none"; return; }
+  // Build list
+  var list = document.getElementById("lang-list");
+  if (list) {
+    list.innerHTML = "";
+    LANG_OPTIONS.forEach(function(opt) {
+      var btn = document.createElement("button");
+      btn.style.cssText = "width:100%;padding:9px 14px;background:" + (CL===opt.code?"#4f6ef718":"transparent") + ";border:none;border-bottom:1px solid #232640;cursor:pointer;color:" + (CL===opt.code?"#4f6ef7":"#e2e5f5") + ";font-size:13px;font-family:inherit;text-align:left;display:flex;align-items:center;gap:9px";
+      btn.innerHTML = "<span style='font-size:16px'>" + opt.flag + "</span><span>" + opt.name + "</span>" + (CL===opt.code?"<span style='margin-left:auto;color:#4f6ef7'>✓</span>":"");
+      btn.onclick = function() { dd.style.display="none"; setLang(opt.code); updateLangBtn(); };
+      list.appendChild(btn);
+    });
+  }
+  dd.style.display = "block";
+}
+function updateLangBtn() {
+  var opt = LANG_OPTIONS.find(function(o){return o.code===CL;});
+  var flag = document.getElementById("lang-flag");
+  if (flag && opt) flag.textContent = opt.flag;
+}
+// Close lang dropdown on outside click
+document.addEventListener("click", function(e) {
+  var wrap = document.getElementById("lang-dd-wrap");
+  if (wrap && !wrap.contains(e.target)) {
+    var dd = document.getElementById("lang-dd");
+    if (dd) dd.style.display = "none";
+  }
+});
+
 function closeSide() {
   if (window.innerWidth < 768) {
     document.getElementById("side").className = "off";
