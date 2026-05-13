@@ -318,16 +318,7 @@ create trigger on_auth_user_created
     <button onclick="togGS()" class="tbtn" title="Ctrl+K">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
     </button>
-    <div style="position:relative" id="lang-dd-wrap">
-    <button onclick="togLangDD()" class="tbtn" id="lang-btn" title="Language">
-      <span id="lang-flag">🇫🇷</span>
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-    </button>
-    <div id="lang-dd" style="display:none;position:absolute;right:0;top:38px;background:#131620;border:1px solid #232640;border-radius:10px;box-shadow:0 8px 24px #000000aa;z-index:2000;min-width:140px;overflow:hidden">
-      <div id="lang-list"></div>
-    </div>
-  </div>
-  <button onclick="togTheme()" class="tbtn">
+    <button onclick="togTheme()" class="tbtn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" id="thico"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/></svg>
     </button>
     <div style="position:relative">
@@ -357,11 +348,11 @@ create trigger on_auth_user_created
       <div class="nfoot">
         <button class="ni" onclick="goto('profile')" style="width:100%">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-          <span id="nav-profile">Mon profil</span>
+          <span>Mon profil</span>
         </button>
         <button class="ni" onclick="doLogout()" style="color:#ef4444;width:100%">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
-          <span id="logout-lbl">Deconnexion</span>
+          <span>Déconnexion</span>
         </button>
       </div>
     </aside>
@@ -393,7 +384,7 @@ create trigger on_auth_user_created
     <div id="mmsg" style="display:none;margin-bottom:10px"></div>
     <div id="mflds" class="g2"></div>
     <div id="mbtns" style="display:flex;gap:9px;justify-content:flex-end;margin-top:10px">
-      <button onclick="closeMod()" class="btn bg0">'+t("cancel")+'</button>
+      <button onclick="closeMod()" class="btn bg0">Annuler</button>
       <button id="msave" class="btn bp">Enregistrer</button>
     </div>
   </div>
@@ -648,243 +639,6 @@ function syncEnd(ok) {
 var S = {user:null, pg:"dashboard", search:"", dark:true, aiOpen:false, aiMsgs:[], aiLoad:false, notif:false, mkey:null, eid:null, sites:[], gsOpen:false};
 
 // ================================================================
-// LANGUAGE SYSTEM
-// ================================================================
-var LANGS = {
-  fr: {
-    // Nav
-    dashboard:"Tableau de bord", incidents:"Incidents", audits:"Audits",
-    risks:"Risques / DUER", ppe:"EPI et Equipements", fire:"Securite Incendie",
-    vehicles:"Vehicules", meetings:"Reunions Securite", nc:"Non-Conformites",
-    actions:"Plan d Actions", documents:"Documents", docsImport:"Import PDF",
-    employees:"Employes", training:"Formations", environment:"Environnement",
-    analytics:"Analytique et KPIs", rapport:"Rapport Mensuel",
-    sites:"Mes sites et Lieux", settings:"Parametres",
-    // UI
-    new_record:"Nouveau", save:"Enregistrer", cancel:"Annuler", edit:"Modifier",
-    delete:"Supprimer", search:t("search"), export_csv:"CSV",
-    import_excel:"Excel/CSV", loading:"Chargement...", no_records:"Aucun enregistrement",
-    confirm_delete:"Supprimer cet element ?", error:"Erreur", success:"Enregistre",
-    logout:"Deconnexion", profile:"Mon profil", theme:"Theme",
-    dark:"Sombre", light:"Clair", language:"Langue", save_config:"Sauvegarder config",
-    // Dashboard
-    db_title:"Tableau de bord", db_sync:"Donnees synchronisees",
-    test_db:"Tester BD", alerts_active:"Alertes actives",
-    see_all:"Voir tout", no_alerts:"Aucune alerte active",
-    // Auth
-    login:"Se connecter", register:"Creer un compte", email:"Email",
-    password:"Mot de passe", confirm_password:"Confirmer", full_name:"Nom complet",
-    company:"Entreprise", forgot_password:"Mot de passe oublie ?",
-    login_error:"Email ou mot de passe incorrect",
-    register_success:"Compte cree!",
-    // Settings
-    settings_title:"Parametres", theme_title:"Theme",
-    supabase_title:"Connexion Supabase", about_title:"A propos",
-    reconfigure:"Reconfigurer", version:"Version", backend:"Backend",
-    auth_type:"Authentification", modules_count:"Modules",
-    // Months
-    months:["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"],
-    months_short:["Jan","Fev","Mar","Avr","Mai","Jun","Jul","Aou","Sep","Oct","Nov","Dec"],
-    // Rapport
-    rapport_title:"Rapport Mensuel QHSE", manager_email:"Email du manager",
-    manager_name:"Nom du manager", your_name:"Votre nom / Responsable QHSE",
-    generate:"Generer le rapport", print_pdf:"Imprimer / PDF",
-    send_email:"Envoyer par email", copy_text:"Copier texte",
-    // Alerts
-    expired:"Expire", today:"Auj.", days_left:"j",
-    expire_badge:"EXPIRE", active_badge:"ACTIF",
-    // Status
-    open:"OPEN", closed:"CLOSED", in_progress:"IN PROGRESS",
-    planned:"PLANNED", completed:"COMPLETED", overdue:"OVERDUE",
-    critical:"CRITICAL", high:"HIGH", medium:"MEDIUM", low:"LOW",
-  },
-  en: {
-    // Nav
-    dashboard:"Dashboard", incidents:"Incidents", audits:"Audits",
-    risks:"Risks / DUER", ppe:"PPE & Equipment", fire:"Fire Safety",
-    vehicles:"Vehicles", meetings:"Safety Meetings", nc:"Non-Conformities",
-    actions:"Action Plan", documents:"Documents", docsImport:"PDF Import",
-    employees:"Employees", training:"Training", environment:"Environment",
-    analytics:"Analytics & KPIs", rapport:"Monthly Report",
-    sites:"My Sites", settings:"Settings",
-    // UI
-    new_record:"New", save:"Save", cancel:"Cancel", edit:"Edit",
-    delete:"Delete", search:"Search...", export_csv:"CSV",
-    import_excel:"Excel/CSV", loading:"Loading...", no_records:"No records found",
-    confirm_delete:"Delete this item?", error:"Error", success:"Saved",
-    logout:"Sign out", profile:"My profile", theme:"Theme",
-    dark:"Dark", light:"Light", language:"Language", save_config:"Save config",
-    // Dashboard
-    db_title:"Dashboard", db_sync:"Data synchronized",
-    test_db:"Test DB", alerts_active:"Active alerts",
-    see_all:"See all", no_alerts:"No active alerts",
-    // Auth
-    login:"Sign in", register:"Create account", email:"Email",
-    password:"Password", confirm_password:"Confirm", full_name:"Full name",
-    company:"Company", forgot_password:"Forgot password?",
-    login_error:"Incorrect email or password",
-    register_success:"Account created!",
-    // Settings
-    settings_title:"Settings", theme_title:"Theme",
-    supabase_title:"Supabase Connection", about_title:"About",
-    reconfigure:"Reconfigure", version:"Version", backend:"Backend",
-    auth_type:"Authentication", modules_count:"Modules",
-    // Months
-    months:["January","February","March","April","May","June","July","August","September","October","November","December"],
-    months_short:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
-    // Rapport
-    rapport_title:"Monthly QHSE Report", manager_email:"Manager email",
-    manager_name:"Manager name", your_name:"Your name / QHSE Manager",
-    generate:"Generate report", print_pdf:"Print / PDF",
-    send_email:"Send by email", copy_text:"Copy text",
-    // Alerts
-    expired:"Expired", today:"Today", days_left:"d",
-    expire_badge:"EXPIRED", active_badge:"ACTIVE",
-    // Status
-    open:"OPEN", closed:"CLOSED", in_progress:"IN PROGRESS",
-    planned:"PLANNED", completed:"COMPLETED", overdue:"OVERDUE",
-    critical:"CRITICAL", high:"HIGH", medium:"MEDIUM", low:"LOW",
-  },
-  es: {
-    // Nav
-    dashboard:"Panel principal", incidents:"Incidentes", audits:"Auditorias",
-    risks:"Riesgos / DUER", ppe:"EPP y Equipos", fire:"Seguridad contra incendios",
-    vehicles:"Vehiculos", meetings:"Reuniones de seguridad", nc:"No conformidades",
-    actions:"Plan de acciones", documents:"Documentos", docsImport:"Importar PDF",
-    employees:"Empleados", training:"Formaciones", environment:"Medio ambiente",
-    analytics:"Analitica y KPIs", rapport:"Informe mensual",
-    sites:"Mis sitios", settings:"Configuracion",
-    // UI
-    new_record:"Nuevo", save:"Guardar", cancel:"Cancelar", edit:"Editar",
-    delete:"Eliminar", search:"Buscar...", export_csv:"CSV",
-    import_excel:"Excel/CSV", loading:"Cargando...", no_records:"Sin registros",
-    confirm_delete:"Eliminar este elemento?", error:"Error", success:"Guardado",
-    logout:"Cerrar sesion", profile:"Mi perfil", theme:"Tema",
-    dark:"Oscuro", light:"Claro", language:"Idioma", save_config:"Guardar configuracion",
-    // Dashboard
-    db_title:"Panel principal", db_sync:"Datos sincronizados",
-    test_db:"Probar BD", alerts_active:"Alertas activas",
-    see_all:"Ver todo", no_alerts:"Sin alertas activas",
-    // Auth
-    login:"Iniciar sesion", register:"Crear cuenta", email:"Correo electronico",
-    password:"Contrasena", confirm_password:"Confirmar", full_name:"Nombre completo",
-    company:"Empresa", forgot_password:"Olvide mi contrasena",
-    login_error:"Correo o contrasena incorrectos",
-    register_success:"Cuenta creada!",
-    // Settings
-    settings_title:"Configuracion", theme_title:"Tema",
-    supabase_title:"Conexion Supabase", about_title:"Acerca de",
-    reconfigure:"Reconfigurar", version:"Version", backend:"Backend",
-    auth_type:"Autenticacion", modules_count:"Modulos",
-    // Months
-    months:["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
-    months_short:["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],
-    // Rapport
-    rapport_title:"Informe mensual QHSE", manager_email:"Email del gerente",
-    manager_name:"Nombre del gerente", your_name:"Su nombre / Responsable QHSE",
-    generate:"Generar informe", print_pdf:"Imprimir / PDF",
-    send_email:"Enviar por correo", copy_text:"Copiar texto",
-    // Alerts
-    expired:"Vencido", today:"Hoy", days_left:"d",
-    expire_badge:"VENCIDO", active_badge:"ACTIVO",
-    // Status
-    open:"ABIERTO", closed:"CERRADO", in_progress:"EN CURSO",
-    planned:"PLANIFICADO", completed:"COMPLETADO", overdue:"ATRASADO",
-    critical:"CRITICO", high:"ALTO", medium:"MEDIO", low:"BAJO",
-  },
-  pt: {
-    // Nav
-    dashboard:"Painel principal", incidents:"Incidentes", audits:"Auditorias",
-    risks:"Riscos / DUER", ppe:"EPI e Equipamentos", fire:"Seguranca contra incendio",
-    vehicles:"Veiculos", meetings:"Reunioes de seguranca", nc:"Nao conformidades",
-    actions:"Plano de acoes", documents:"Documentos", docsImport:"Importar PDF",
-    employees:"Funcionarios", training:"Formacoes", environment:"Meio ambiente",
-    analytics:"Analitica e KPIs", rapport:"Relatorio mensal",
-    sites:"Meus locais", settings:"Configuracoes",
-    // UI
-    new_record:"Novo", save:"Salvar", cancel:"Cancelar", edit:"Editar",
-    delete:"Excluir", search:"Pesquisar...", export_csv:"CSV",
-    import_excel:"Excel/CSV", loading:"Carregando...", no_records:"Nenhum registro",
-    confirm_delete:"Excluir este item?", error:"Erro", success:"Salvo",
-    logout:"Sair", profile:"Meu perfil", theme:"Tema",
-    dark:"Escuro", light:"Claro", language:"Idioma", save_config:"Salvar configuracao",
-    // Dashboard
-    db_title:"Painel principal", db_sync:"Dados sincronizados",
-    test_db:"Testar BD", alerts_active:"Alertas ativos",
-    see_all:"Ver tudo", no_alerts:"Sem alertas ativos",
-    // Auth
-    login:"Entrar", register:"Criar conta", email:"Email",
-    password:"Senha", confirm_password:"Confirmar", full_name:"Nome completo",
-    company:"Empresa", forgot_password:"Esqueci a senha",
-    login_error:"Email ou senha incorretos",
-    register_success:"Conta criada!",
-    // Settings
-    settings_title:"Configuracoes", theme_title:"Tema",
-    supabase_title:"Conexao Supabase", about_title:"Sobre",
-    reconfigure:"Reconfigurar", version:"Versao", backend:"Backend",
-    auth_type:"Autenticacao", modules_count:"Modulos",
-    // Months
-    months:["Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],
-    months_short:["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
-    // Rapport
-    rapport_title:"Relatorio mensal QHSE", manager_email:"Email do gerente",
-    manager_name:"Nome do gerente", your_name:"Seu nome / Responsavel QHSE",
-    generate:"Gerar relatorio", print_pdf:"Imprimir / PDF",
-    send_email:"Enviar por email", copy_text:"Copiar texto",
-    // Alerts
-    expired:"Vencido", today:"Hoje", days_left:"d",
-    expire_badge:"VENCIDO", active_badge:"ATIVO",
-    // Status
-    open:"ABERTO", closed:"FECHADO", in_progress:"EM ANDAMENTO",
-    planned:"PLANEJADO", completed:"CONCLUIDO", overdue:"ATRASADO",
-    critical:"CRITICO", high:"ALTO", medium:"MEDIO", low:"BAIXO",
-  }
-};
-
-// Current language (default: fr)
-var CL = (function(){
-  try { return localStorage.getItem("qhse_lang") || "fr"; } catch(e){ return "fr"; }
-})();
-
-// Get translation
-function t(key) {
-  var lang = LANGS[CL] || LANGS.fr;
-  return lang[key] || LANGS.fr[key] || key;
-}
-
-// Get months array in current language
-function tMonths() { return (LANGS[CL]||LANGS.fr).months; }
-function tMonthsShort() { return (LANGS[CL]||LANGS.fr).months_short; }
-
-// Set language
-function setLang(code) {
-  CL = code;
-  try { localStorage.setItem("qhse_lang", code); } catch(e){}
-  // Update NAV labels
-  NAV.forEach(function(item) {
-    var tr = t(item.k);
-    if (tr && tr !== item.k) item.l = tr;
-  });
-  // Re-render current page
-  mkNav();
-  goto(S.pg);
-  toast("Language: " + {fr:"Francais",en:"English",es:"Espanol",pt:"Portugues"}[code]);
-  setTimeout(applyLangToUI, 100);
-}
-
-// Lang flag+name
-var LANG_OPTIONS = [
-  {code:"fr", flag:"🇫🇷", name:"Français"},
-  {code:"en", flag:"🇬🇧", name:"English"},
-  {code:"es", flag:"🇪🇸", name:"Español"},
-  {code:"pt", flag:"🇧🇷", name:"Português"},
-];
-
-// applyLangToNav called after NAV init
-
-
-
-// ================================================================
 // UTILS
 // ================================================================
 var BC = {OPEN:"#ef4444",CLOSED:"#22c55e","IN PROGRESS":"#f59e0b",CRITICAL:"#dc2626",HIGH:"#ea580c",MEDIUM:"#d97706",LOW:"#16a34a",PLANNED:"#3b82f6",COMPLETED:"#22c55e",OVERDUE:"#ef4444",ACTIVE:"#22c55e",INACTIVE:"#6b7280",PENDING:"#f59e0b",VALIDE:"#22c55e",EXPIRE:"#ef4444","A RENOUVELER":"#f59e0b",OK:"#22c55e","NON CONFORME":"#ef4444",PARTIEL:"#f59e0b"};
@@ -965,7 +719,6 @@ var NAV = [
   {k:"analytics",l:"Analytique et KPIs",i:"analytics",g:"Rapports"},
   {k:"sites",l:"Mes sites et Lieux",i:"site",g:"Configuration"},
   {k:"rapport",l:"Rapport Mensuel",i:"rapport",g:"Rapports"},
-  {k:"outils",l:"Outils QHSE",i:"tools",g:"Rapports"},
   {k:"settings",l:"Parametres",i:"settings",g:"Configuration"},
 ];
 
@@ -1100,7 +853,6 @@ async function startApp() {
   document.getElementById("app").style.display = "flex";
   document.getElementById("splash").style.display = "none";
   mkNav();
-  applyLangToUI();
   try {
     await goto("dashboard");
   } catch(e) {
@@ -1153,7 +905,6 @@ var PI = {
   sun:'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>',
   rapport:'<path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>',
   send:'<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>',
-  tools:'<path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>',
   warn:'<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>',
   analytics:'<path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/>',
   upload:'<path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>',
@@ -1713,13 +1464,13 @@ async function testDB() {
 }
 
 async function pgCRUD(mk) {
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
   var def=M[mk];
   var rows=await gRecs(mk);
   var srch=S.search.toLowerCase();
   var filt=srch?rows.filter(function(r){return Object.values(r).some(function(v){return String(v).toLowerCase().indexOf(srch)>=0;});}):rows;
   var ths=def.c.map(function(col){return "<th>"+col.l+"</th>";}).join("")+"<th style=\"width:80px\"></th>";
-  var trs=!filt.length?'<tr><td colspan="'+(def.c.length+1)+'" style="text-align:center;color:#6b6f96;padding:28px">" + t("no_records") + "</td></tr>':
+  var trs=!filt.length?'<tr><td colspan="'+(def.c.length+1)+'" style="text-align:center;color:#6b6f96;padding:28px">Aucun enregistrement</td></tr>':
     filt.map(function(row){
       var bg="";
       if(row.status==="NON CONFORME"||row.status==="EXPIRE")bg="background:#ef444408;";
@@ -1727,7 +1478,7 @@ async function pgCRUD(mk) {
       return '<tr style="'+bg+'">'+tds+'<td><div style="display:flex;gap:3px"><button data-action="edit" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+"</button>"+'<button data-action="del" data-id="'+row.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+"</button></div></td></tr>";
     }).join("");
 
-  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+filt.length+" enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">'+t('import_excel')+'</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' '+t("export_csv")+'</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' '+t("new_record")+'au</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder=t("search") value="'+xe(S.search)+'" oninput="S.search=this.value;pgCRUD(\''+mk+'\')" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody>"+trs+"</tbody></table></div></div></div>");
+  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+filt.length+" enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">&#8679; Excel/CSV</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' CSV</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' Nouveau</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder="Rechercher..." value="'+xe(S.search)+'" oninput="S.search=this.value;pgCRUD(\''+mk+'\')" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody>"+trs+"</tbody></table></div></div></div>");
 }
 
 async function pgSites() {
@@ -1766,7 +1517,7 @@ async function delSiteA(id) {
 }
 
 async function pgDocsImport() {
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
   var docs=await gDocs();
   var rows=docs.map(function(doc){return '<tr><td style="font-weight:600">'+xe(doc.name||"")+"</td><td>"+xe((doc.ext||"").toUpperCase())+"</td><td>"+xe(doc.size||"")+"</td><td>"+xe(doc.date||"")+"</td>"+'<td><div style="display:flex;gap:4px"><button data-action="dldoc" data-id="'+doc.id+'" style="background:#22c55e15;border:1px solid #22c55e30;border-radius:6px;padding:4px 9px;cursor:pointer;color:#22c55e;font-size:11px;font-weight:600;font-family:inherit">Telecharger</button><button data-action="deldoc" data-id="'+doc.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:4px 8px;cursor:pointer;color:#ef4444;display:flex;align-items:center">'+ic("del",12)+"</button></div></td></tr>";}).join("");
   put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic("pdf",22)+"</span><div><h1>Import de documents</h1><p>"+docs.length+" document(s) - stockes sur Supabase</p></div></div></div>"+'<div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:9px;padding:11px 14px;font-size:13px;color:#4f6ef7;margin-bottom:14px">Importez PDF, Word, Excel. Stockes sur votre serveur Supabase.</div><div id="dz-area" class="dz"><div style="font-size:40px;margin-bottom:10px">&#128194;</div><p style="font-weight:700;font-size:15px;margin:0">Glissez vos fichiers ici ou cliquez</p><p style="font-size:12px;color:#6b6f96;margin:5px 0 0">PDF, Word, Excel, Images</p><input type="file" id="fi-doc" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" style="display:none" onchange="handleDocFiles(this.files)"/></div>'+(docs.length?'<div class="card0"><div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Taille</th><th>Importe le</th><th style="width:180px">Actions</th></tr></thead><tbody>'+rows+"</tbody></table></div></div>":'<p style="text-align:center;color:#6b6f96;padding:20px">Aucun document</p>')+"</div>");
@@ -1796,27 +1547,7 @@ async function handleDocFiles(files) {
 }
 
 function pgSettings() {
-  // Build lang cards safely using DOM (avoids onclick quote nesting)
-  var langCardsEl = document.createElement("div");
-  langCardsEl.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:8px";
-  LANG_OPTIONS.forEach(function(opt) {
-    var active = CL === opt.code;
-    var btn = document.createElement("button");
-    btn.style.cssText = "padding:12px 14px;border-radius:10px;border:2px solid "+(active?"#4f6ef7":"#232640")+";cursor:pointer;background:"+(active?"#4f6ef710":"transparent")+";text-align:left;width:100%;display:flex;align-items:center;gap:10px;font-family:inherit";
-    var code = opt.code;
-    btn.onclick = function(){ setLang(code); };
-    btn.innerHTML = '<span style="font-size:22px">'+opt.flag+'</span>'
-      +'<div><p style="margin:0;font-size:13px;font-weight:'+(active?700:500)+';color:'+(active?"#4f6ef7":"#e2e5f5")+'">'+opt.name+'</p>'
-      +'<p style="margin:0;font-size:10px;color:#6b6f96">'+opt.code.toUpperCase()+'</p></div>'
-      +(active?'<div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#4f6ef7;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>':"");
-    langCardsEl.appendChild(btn);
-  });
-  var langCards = "";  // unused now, DOM used directly
-
-  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:18px;font-weight:800;margin:0">Parametres</h1></div><div class="gcards"><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Langue / Language</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+langCards+'</div></div><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Theme</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+[{k:true,l:"Sombre",i:"moon"},{k:false,l:"Clair",i:"sun"}].map(function(t){var a=S.dark===t.k;return "<button onclick=\"setTh("+t.k+")\" style=\"padding:14px;border-radius:12px;border:2px solid "+(a?"#4f6ef7":"#232640")+";cursor:pointer;background:"+(a?"#4f6ef710":"transparent")+";text-align:left\"><div style=\"display:flex;align-items:center;gap:8px\">"+ic(t.i,16)+"<span style=\"font-size:13px;color:"+(a?"#4f6ef7":"#e2e5f5")+"\">"+t.l+"</span></div></button>";}).join("")+"</div></div>"+'<div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Connexion Supabase</h3><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">URL</span><span style="font-weight:600;font-size:11px;color:#22c55e">Connecte</span></div><button onclick="showSetup()" class="btn bg0" style="width:100%;justify-content:center;margin-top:12px">Reconfigurer</button></div><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">A propos</h3>'+[["Version","5.0 - Cloud"],["Backend","Supabase PostgreSQL"],["Auth","Email/Password"],["Modules","14 modules QHSE"],["Standards","ISO 45001 - 14001 - 9001"]].map(function(r){return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">'+r[0]+"</span><span style=\"font-weight:600\">"+r[1]+"</span></div>";}).join("")+"</div></div></div>");
-  // Inject language grid
-  var lgrid = document.getElementById("lang-grid");
-  if(lgrid) lgrid.appendChild(langCardsEl);
+  put('<div class="fi"><div style="margin-bottom:14px"><h1 style="font-size:18px;font-weight:800;margin:0">Parametres</h1></div><div class="gcards"><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Theme</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+[{k:true,l:"Sombre",i:"moon"},{k:false,l:"Clair",i:"sun"}].map(function(t){var a=S.dark===t.k;return "<button onclick=\"setTh("+t.k+")\" style=\"padding:14px;border-radius:12px;border:2px solid "+(a?"#4f6ef7":"#232640")+";cursor:pointer;background:"+(a?"#4f6ef710":"transparent")+";text-align:left\"><div style=\"display:flex;align-items:center;gap:8px\">"+ic(t.i,16)+"<span style=\"font-size:13px;color:"+(a?"#4f6ef7":"#e2e5f5")+"\">"+t.l+"</span></div></button>";}).join("")+"</div></div>"+'<div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">Connexion Supabase</h3><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">URL</span><span style="font-weight:600;font-size:11px;color:#22c55e">Connecte</span></div><button onclick="showSetup()" class="btn bg0" style="width:100%;justify-content:center;margin-top:12px">Reconfigurer</button></div><div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 14px">A propos</h3>'+[["Version","5.0 - Cloud"],["Backend","Supabase PostgreSQL"],["Auth","Email/Password"],["Modules","14 modules QHSE"],["Standards","ISO 45001 - 14001 - 9001"]].map(function(r){return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #232640;font-size:13px"><span style="color:#6b6f96">'+r[0]+"</span><span style=\"font-weight:600\">"+r[1]+"</span></div>";}).join("")+"</div></div></div>");
 }
 
 function pgProfile() {
@@ -1844,14 +1575,13 @@ async function goto(k) {
   S.pg=k; S.search=""; closeSide(); mkNav();
   var n=NAV.find(function(n){return n.k===k;});
   document.getElementById("ttl").textContent=n?n.l:"Tableau de bord";
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
   try {
     if(k==="dashboard") await pgDash();
     else if(k==="sites") await pgSites();
     else if(k==="docsImport") await pgDocsImport();
     else if(k==="analytics") await pgAnalytics();
     else if(k==="rapport") await pgRapport();
-    else if(k==="outils") pgOutils();
     else if(k==="settings") pgSettings();
     else if(k==="profile") pgProfile();
     else if(M[k]) await pgCRUD(k);
@@ -1917,7 +1647,7 @@ async function saveMod() {
     return;
   }
   closeMod();
-  toast(t("success") + (S.eid?" ✓":""));
+  toast(S.eid?"Modification enregistree sur le serveur":"Cree et enregistre sur le serveur");
   await pgCRUD(mk);
 }
 async function dRow(id) {
@@ -1945,7 +1675,7 @@ document.addEventListener("click",function(e){
   var id=btn.getAttribute("data-id");
   var mk=btn.getAttribute("data-mk")||S.pg;
   if(act==="edit")oEdit(mk,id);
-  else if(act==="del"){if(confirm(t("confirm_delete")))dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}
+  else if(act==="del"){if(confirm("Supprimer?"))dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}
   else if(act==="create")oCreate(mk);
   else if(act==="csv")csvExp(mk);
   else if(act==="xlsimp")oXLS(mk);
@@ -1953,7 +1683,7 @@ document.addEventListener("click",function(e){
   else if(act==="editsite")oSite(id);
   else if(act==="delsite")delSiteA(id);
   else if(act==="dldoc")downloadDoc(id);
-  else if(act==="deldoc"){if(confirm(t("confirm_delete")))dDoc(id).then(function(){toast("Supprime");pgDocsImport();});}
+  else if(act==="deldoc"){if(confirm("Supprimer?"))dDoc(id).then(function(){toast("Supprime");pgDocsImport();});}
   else if(act==="previewdoc")previewDoc(id);
   else if(act==="printdoc")printDoc(id);
 });
@@ -2075,11 +1805,6 @@ document.addEventListener("click",function(e){var np=document.getElementById("np
 // INIT
 // ================================================================
 (function(){
-  // Apply language to NAV labels (safe - called after all declarations)
-  NAV.forEach(function(item){
-    var tr = (LANGS[CL]||LANGS.fr)[item.k];
-    if(tr) item.l = tr;
-  });
   var cfg=getConfig();
   if(!cfg){showSetup();document.getElementById("splash").style.display="none";return;}
   sbInit(cfg.url,cfg.key);
@@ -2325,7 +2050,7 @@ async function doImpRows(mk) {
 // PDF VIEWER & PRINTER (updated pgDocsImport)
 // ================================================================
 async function pgDocsImport() {
-  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement...</p></div>');
   var docs=await gDocs();
   var rows=docs.map(function(doc){
     var ico={pdf:"PDF",doc:"DOC",docx:"DOCX",xls:"XLS",xlsx:"XLSX",png:"IMG",jpg:"IMG",jpeg:"IMG"}[doc.ext]||"FILE";
@@ -2779,826 +2504,8 @@ function copyRapportText() {
 
 
 // ================================================================
-// OUTILS DE RESOLUTION DES PROBLEMES QHSE
-// ================================================================
-function pgOutils() {
-  var tools = [
-    {
-      id:'ishikawa', icon:'&#x1F41F;', color:'#ef4444',
-      title:'Diagramme Ishikawa (5M)',
-      desc:'Identifier les causes racines d\'un probleme par categorie : Matiere, Machine, Methode, Main d\'oeuvre, Milieu.',
-      use:'Analyse d\'accident, NC majeure, defaut qualite recurrent'
-    },
-    {
-      id:'5pourquoi', icon:'&#x2753;', color:'#f59e0b',
-      title:'Methode des 5 Pourquoi',
-      desc:'Remonter systematiquement a la cause racine en posant 5 fois la question "Pourquoi ?".',
-      use:'Incident, NC, reclamation client, accident'
-    },
-    {
-      id:'amdec', icon:'&#x26A0;', color:'#f97316',
-      title:'AMDEC / FMEA',
-      desc:'Analyser les modes de defaillance, leurs effets et leur criticite (Gravite x Occurrence x Detection = IPR).',
-      use:'Evaluation des risques, validation equipements, ISO 9001'
-    },
-    {
-      id:'pdca', icon:'&#x1F501;', color:'#4f6ef7',
-      title:'Roue PDCA (Plan-Do-Check-Act)',
-      desc:'Cycle d\'amelioration continue en 4 phases : Planifier, Faire, Verifier, Agir.',
-      use:'Actions correctives, amelioration continue, objectifs QHSE'
-    },
-    {
-      id:'swot', icon:'&#x1F4CA;', color:'#22c55e',
-      title:'Analyse SWOT QHSE',
-      desc:'Identifier les Forces, Faiblesses, Opportunites et Menaces de votre systeme QHSE.',
-      use:'Revue de direction, contexte ISO 9001/14001/45001'
-    },
-    {
-      id:'bowtie', icon:'&#x1F454;', color:'#7c5cf6',
-      title:'Analyse Noeud Papillon (Bow-Tie)',
-      desc:'Visualiser les causes, l\'evenement redoute et les consequences avec les barrieres de prevention et protection.',
-      use:'Risques majeurs, industries a risque, HSE'
-    },
-    {
-      id:'pareto', icon:'&#x1F4C8;', color:'#ec4899',
-      title:'Analyse de Pareto (80/20)',
-      desc:'Identifier les 20% de causes qui generent 80% des problemes. Prioriser les actions correctives.',
-      use:'NC recurrentes, incidents repetitifs, couts qualite'
-    },
-    {
-      id:'audit8d', icon:'&#x1F4CB;', color:'#38bdf8',
-      title:'Rapport 8D',
-      desc:'8 Disciplines : Equipe, Description, Actions immediates, Causes racines, Actions correctives, Validation, Prevention, Cloture.',
-      use:'NC client, reclamation, incident grave'
-    },
-    {
-      id:'lmra', icon:'&#x1F440;', color:'#22c55e',
-      title:'LMRA - Last Minute Risk Assessment',
-      desc:'Evaluation des risques en derniere minute avant de commencer une tache. Checklist rapide sur le terrain.',
-      use:'Travaux dangereux, interventions terrain, permis de travail'
-    },
-    {
-      id:'hira', icon:'&#x1F6E1;', color:'#f59e0b',
-      title:'HIRA - Hazard Identification & Risk Assessment',
-      desc:'Identification systematique des dangers, evaluation de la probabilite et gravite, plan de maitrise.',
-      use:'DUER, evaluation des risques, ISO 45001'
-    },
-  ];
-
-  var html = '<div class="fi">'
-    +'<div style="margin-bottom:20px"><h1 style="font-size:19px;font-weight:800;margin:0">Outils QHSE</h1>'
-    +'<p style="color:#6b6f96;font-size:12px;margin:3px 0 0">Methodes et outils de resolution des problemes</p></div>'
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">';
-
-  tools.forEach(function(tool) {
-    html += '<div style="background:#131620;border:1px solid #232640;border-radius:14px;padding:18px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:10px" '
-      +'onmouseover="this.style.borderColor=\''+tool.color+'\';this.style.background=\''+tool.color+'08\'"  '
-      +'onmouseout="this.style.borderColor=\'#232640\';this.style.background=\'#131620\'" '
-      +'onclick="openTool(\''+tool.id+'\')">'
-      +'<div style="display:flex;align-items:center;gap:12px">'
-      +'<div style="font-size:28px;width:48px;height:48px;background:'+tool.color+'15;border-radius:12px;display:flex;align-items:center;justify-content:center">'+tool.icon+'</div>'
-      +'<div><p style="margin:0;font-size:13px;font-weight:700;color:'+tool.color+'">'+tool.title+'</p>'
-      +'<p style="margin:2px 0 0;font-size:10px;color:#6b6f96;text-transform:uppercase;letter-spacing:.4px">'+tool.use+'</p></div></div>'
-      +'<p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6">'+tool.desc+'</p>'
-      +'<div style="display:flex;justify-content:flex-end">'
-      +'<span style="font-size:11px;color:'+tool.color+';font-weight:600">Ouvrir l\'outil →</span>'
-      +'</div></div>';
-  });
-
-  html += '</div></div>';
-  put(html);
-}
-
-function openTool(id) {
-  var tools = {
-    ishikawa: pgIshikawa,
-    '5pourquoi': pg5Pourquoi,
-    amdec: pgAMDEC,
-    pdca: pgPDCA,
-    swot: pgSWOT,
-    bowtie: pgBowTie,
-    pareto: pgPareto,
-    audit8d: pg8D,
-    lmra: pgLMRA,
-    hira: pgHIRA,
-  };
-  if (tools[id]) tools[id]();
-}
-
-// ── ISHIKAWA ─────────────────────────────────────────────────────
-function pgIshikawa() {
-  document.getElementById("mtit").textContent = "Diagramme Ishikawa — Analyse Causes Racines";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Actions";
-  document.getElementById("msave").onclick = saveIshikawa;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var cats = ['Matiere','Machine','Methode','Main d\'oeuvre','Milieu','Management'];
-  var colors = ['#ef4444','#f97316','#f59e0b','#22c55e','#4f6ef7','#7c5cf6'];
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="f"><label>Probleme / Effet constate (tete du poisson)</label>'
-    +'<input id="ishi-prob" type="text" placeholder="Ex: Accident avec arret, NC repetee, Taux de rebut eleve..."/></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">';
-
-  cats.forEach(function(cat, i) {
-    html += '<div style="background:#1a1d2b;border-radius:10px;padding:12px;border:1px solid '+colors[i]+'40">'
-      +'<p style="margin:0 0 8px;font-size:11px;font-weight:700;color:'+colors[i]+';text-transform:uppercase;letter-spacing:.5px">'+cat+'</p>'
-      +'<div id="ishi-'+i+'-list"></div>'
-      +'<div style="display:flex;gap:6px;margin-top:6px">'
-      +'<input id="ishi-'+i+'-inp" type="text" placeholder="Ajouter une cause..." style="flex:1;background:#131620;border:1px solid #232640;border-radius:6px;padding:6px 8px;color:#e2e5f5;font-size:12px;box-sizing:border-box"/>'
-      +'<button data-action="ishi-add" data-cat="'+i+'" style="background:'+colors[i]+';border:none;border-radius:6px;padding:6px 10px;color:#fff;cursor:pointer;font-size:12px;font-family:inherit;white-space:nowrap">+</button>'
-      +'</div></div>';
-  });
-
-  html += '</div>'
-    +'<div style="margin-top:14px;background:#4f6ef712;border:1px solid #4f6ef730;border-radius:10px;padding:12px">'
-    +'<p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#4f6ef7">CAUSE RACINE IDENTIFIEE</p>'
-    +'<textarea id="ishi-root" rows="2" style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:13px;box-sizing:border-box" placeholder="Apres analyse, la cause racine principale est..."></textarea>'
-    +'</div>'
-    +'<div style="margin-top:10px" class="f"><label>Action corrective proposee</label>'
-    +'<textarea id="ishi-action" rows="2" placeholder="Action a mettre en oeuvre..."></textarea>'
-    +'</div></div>';
-
-  document.getElementById("mflds").innerHTML = html;
-  showMod();
-
-  // Event delegation for ishi-add buttons
-  document.querySelectorAll("[data-action='ishi-add']").forEach(function(btn) {
-    btn.onclick = function() {
-      var cat = btn.getAttribute("data-cat");
-      var inp = document.getElementById("ishi-"+cat+"-inp");
-      if (!inp || !inp.value.trim()) return;
-      var list = document.getElementById("ishi-"+cat+"-list");
-      var item = document.createElement("div");
-      item.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:12px;border-bottom:1px solid #232640;margin-bottom:2px";
-      item.innerHTML = '<span style="color:#e2e5f5">• '+xe(inp.value.trim())+'</span>'
-        +'<button onclick="this.parentNode.remove()" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:0 4px;font-size:14px;line-height:1">×</button>';
-      list.appendChild(item);
-      inp.value = "";
-      inp.focus();
-    };
-  });
-}
-
-function saveIshikawa() {
-  var prob = document.getElementById("ishi-prob").value.trim();
-  var root = document.getElementById("ishi-root").value.trim();
-  var action = document.getElementById("ishi-action").value.trim();
-  if (!prob) { var m=document.getElementById("mmsg"); m.className="aerr"; m.textContent="Decrivez le probleme."; m.style.display="block"; return; }
-  var rec = {
-    title: "Ishikawa: "+prob.substring(0,50),
-    type: "Corrective", origin: "Incident",
-    description: "Cause racine: "+root,
-    result: action, priority: "HIGH", status: "PLANNED",
-    dueDate: new Date(Date.now()+30*86400000).toISOString().split("T")[0]
-  };
-  sRec("actions", rec, null).then(function(){
-    closeMod(); toast("Analyse Ishikawa enregistree dans Actions!");
-  });
-}
-
-// ── 5 POURQUOI ───────────────────────────────────────────────────
-function pg5Pourquoi() {
-  document.getElementById("mtit").textContent = "Methode des 5 Pourquoi";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Actions";
-  document.getElementById("msave").onclick = save5P;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="f"><label>Probleme observe</label>'
-    +'<input id="5p-prob" type="text" placeholder="Ex: L\'employe a ete blesse par une piece en chute"/></div>'
-    +'<div style="background:#1a1d2b;border-radius:10px;padding:14px;margin-bottom:12px">';
-
-  for (var i = 1; i <= 5; i++) {
-    var colors2 = ['#ef4444','#f97316','#f59e0b','#22c55e','#4f6ef7'];
-    html += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">'
-      +'<div style="width:28px;height:28px;border-radius:50%;background:'+colors2[i-1]+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0;margin-top:2px">'+i+'</div>'
-      +'<div style="flex:1"><label style="display:block;font-size:10px;color:#6b6f96;font-weight:700;margin-bottom:3px;text-transform:uppercase">Pourquoi n°'+i+' ?</label>'
-      +'<input id="5p-why'+i+'" type="text" placeholder="Parce que..." style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px 10px;color:#e2e5f5;font-size:13px;box-sizing:border-box"/>'
-      +'</div></div>';
-  }
-
-  html += '</div>'
-    +'<div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:10px;padding:12px;margin-bottom:10px">'
-    +'<p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#4f6ef7;text-transform:uppercase">CAUSE RACINE</p>'
-    +'<input id="5p-root" type="text" placeholder="La cause racine est..." style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px 10px;color:#e2e5f5;font-size:13px;box-sizing:border-box"/>'
-    +'</div>'
-    +'<div class="f"><label>Action corrective</label>'
-    +'<textarea id="5p-action" rows="2" placeholder="Pour eliminer la cause racine, nous allons..."></textarea>'
-    +'</div></div>';
-
-  document.getElementById("mflds").innerHTML = html;
-  showMod();
-}
-
-function save5P() {
-  var prob = document.getElementById("5p-prob").value.trim();
-  var root = document.getElementById("5p-root").value.trim();
-  var action = document.getElementById("5p-action").value.trim();
-  if (!prob) { var m=document.getElementById("mmsg"); m.className="aerr"; m.textContent="Decrivez le probleme."; m.style.display="block"; return; }
-  var whys = [1,2,3,4,5].map(function(i){return document.getElementById("5p-why"+i).value.trim();}).filter(Boolean).join(" → ");
-  sRec("actions", {title:"5 Pourquoi: "+prob.substring(0,50), type:"Corrective", description:whys+"\nCause racine: "+root, result:action, priority:"HIGH", status:"PLANNED"}, null)
-    .then(function(){ closeMod(); toast("Analyse 5 Pourquoi enregistree!"); });
-}
-
-// ── AMDEC ────────────────────────────────────────────────────────
-function pgAMDEC() {
-  document.getElementById("mtit").textContent = "AMDEC — Analyse des Modes de Defaillance";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Risques";
-  document.getElementById("msave").onclick = saveAMDEC;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="g2">'
-    +'<div class="f"><label>Composant / Fonction / Processus</label><input id="am-comp" type="text" placeholder="Ex: Convoyeur B12, Processus soudure"/></div>'
-    +'<div class="f"><label>Mode de defaillance</label><input id="am-mode" type="text" placeholder="Ex: Rupture courroie, Surchauffe"/></div>'
-    +'<div class="f"><label>Effet de la defaillance</label><input id="am-effet" type="text" placeholder="Ex: Arret production, Blessure operateur"/></div>'
-    +'<div class="f"><label>Cause de la defaillance</label><input id="am-cause" type="text" placeholder="Ex: Usure, Mauvaise lubrification"/></div>'
-    +'</div>'
-    +'<div style="background:#1a1d2b;border-radius:12px;padding:14px;margin-bottom:12px">'
-    +'<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#e2e5f5">Indice de Priorite du Risque (IPR = G × O × D)</p>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
-    +['G — Gravite (1-10)','O — Occurrence (1-10)','D — Detection (1-10)'].map(function(l,i){
-      var id = ['am-g','am-o','am-d'][i];
-      return '<div><label style="display:block;font-size:10px;color:#6b6f96;margin-bottom:4px;text-transform:uppercase">'+l+'</label>'
-        +'<input id="'+id+'" type="number" min="1" max="10" value="1" oninput="calcIPR()" style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:16px;font-weight:700;text-align:center;box-sizing:border-box"/>'
-        +'</div>';
-    }).join('')
-    +'</div>'
-    +'<div style="margin-top:14px;display:flex;align-items:center;gap:14px">'
-    +'<div id="am-ipr-box" style="width:80px;height:80px;border-radius:50%;background:#22c55e20;border:3px solid #22c55e;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">'
-    +'<span id="am-ipr" style="font-size:22px;font-weight:900;color:#22c55e">1</span>'
-    +'<span style="font-size:9px;color:#6b6f96">IPR</span></div>'
-    +'<div>'
-    +'<p id="am-ipr-label" style="margin:0;font-size:13px;font-weight:700;color:#22c55e">Risque FAIBLE</p>'
-    +'<p style="margin:2px 0 0;font-size:11px;color:#6b6f96">≤40 Faible | 41-100 Moyen | 101-200 Eleve | >200 Critique</p>'
-    +'</div></div></div>'
-    +'<div class="g2">'
-    +'<div class="f"><label>Mesures de prevention existantes</label><input id="am-prev" type="text" placeholder="Ex: Maintenance preventive mensuelle"/></div>'
-    +'<div class="f"><label>Action corrective proposee</label><input id="am-action" type="text" placeholder="Ex: Ajouter capteur vibration"/></div>'
-    +'</div></div>';
-
-  document.getElementById("mflds").innerHTML = html;
-  showMod();
-}
-
-function calcIPR() {
-  var g = parseInt(document.getElementById("am-g").value)||1;
-  var o = parseInt(document.getElementById("am-o").value)||1;
-  var d = parseInt(document.getElementById("am-d").value)||1;
-  var ipr = g*o*d;
-  var el = document.getElementById("am-ipr");
-  var box = document.getElementById("am-ipr-box");
-  var lbl = document.getElementById("am-ipr-label");
-  if (!el || !box || !lbl) return;
-  el.textContent = ipr;
-  var c = ipr<=40?'#22c55e':ipr<=100?'#f59e0b':ipr<=200?'#f97316':'#ef4444';
-  var l = ipr<=40?'Risque FAIBLE':ipr<=100?'Risque MOYEN':ipr<=200?'Risque ELEVE':'Risque CRITIQUE';
-  el.style.color = c; box.style.borderColor = c; box.style.background = c+'20'; lbl.style.color = c; lbl.textContent = l;
-}
-
-function saveAMDEC() {
-  var comp = document.getElementById("am-comp").value.trim();
-  var mode = document.getElementById("am-mode").value.trim();
-  var effet = document.getElementById("am-effet").value.trim();
-  var cause = document.getElementById("am-cause").value.trim();
-  var g = parseInt(document.getElementById("am-g").value)||1;
-  var o = parseInt(document.getElementById("am-o").value)||1;
-  var d = parseInt(document.getElementById("am-d").value)||1;
-  var ipr = g*o*d;
-  var level = ipr<=40?'LOW':ipr<=100?'MEDIUM':ipr<=200?'HIGH':'CRITICAL';
-  if (!comp || !mode) { var m=document.getElementById("mmsg"); m.className="aerr"; m.textContent="Composant et mode de defaillance requis."; m.style.display="block"; return; }
-  sRec("risks", {
-    hazard: mode+" ("+comp+")", situation: effet, type: "Autre",
-    causes: cause, controls: document.getElementById("am-prev").value,
-    newMeasures: document.getElementById("am-action").value,
-    probability: o, gravity: g, level: level,
-    notes: "AMDEC — IPR: "+ipr+" (G:"+g+" × O:"+o+" × D:"+d+")"
-  }, null).then(function(){ closeMod(); toast("AMDEC enregistree dans Risques!"); });
-}
-
-// ── PDCA ────────────────────────────────────────────────────────
-function pgPDCA() {
-  document.getElementById("mtit").textContent = "Roue PDCA — Plan-Do-Check-Act";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Actions";
-  document.getElementById("msave").onclick = savePDCA;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var phases = [
-    {id:'p',label:'PLAN — Planifier',color:'#4f6ef7',icon:'&#x1F4CB;',desc:'Identifier le probleme, analyser les causes, definir les objectifs et le plan d\'action.'},
-    {id:'d',label:'DO — Faire',color:'#22c55e',icon:'&#x2699;',desc:'Mettre en oeuvre le plan d\'action, former les equipes, realiser les changements.'},
-    {id:'c',label:'CHECK — Verifier',color:'#f59e0b',icon:'&#x1F50D;',desc:'Mesurer les resultats, comparer aux objectifs, analyser les ecarts.'},
-    {id:'a',label:'ACT — Agir',color:'#ef4444',icon:'&#x1F504;',desc:'Standardiser si succes, corriger si echec, planifier le prochain cycle.'},
-  ];
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="f"><label>Sujet / Probleme traite</label>'
-    +'<input id="pdca-title" type="text" placeholder="Ex: Reduction des incidents de manutention"/></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-
-  phases.forEach(function(ph) {
-    html += '<div style="background:#1a1d2b;border-radius:10px;padding:14px;border-left:4px solid '+ph.color+'">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-      +'<span style="font-size:20px">'+ph.icon+'</span>'
-      +'<p style="margin:0;font-size:12px;font-weight:700;color:'+ph.color+'">'+ph.label+'</p></div>'
-      +'<p style="margin:0 0 8px;font-size:11px;color:#6b6f96;line-height:1.5">'+ph.desc+'</p>'
-      +'<textarea id="pdca-'+ph.id+'" rows="3" placeholder="Decrivez vos actions..." style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:12px;box-sizing:border-box;resize:vertical"></textarea>'
-      +'</div>';
-  });
-
-  html += '</div>'
-    +'<div class="g2" style="margin-top:10px">'
-    +'<div class="f"><label>Date de debut</label><input id="pdca-start" type="date"/></div>'
-    +'<div class="f"><label>Date de fin prevue</label><input id="pdca-end" type="date"/></div>'
-    +'</div></div>';
-
-  document.getElementById("mflds").innerHTML = html;
-  showMod();
-}
-
-function savePDCA() {
-  var title = document.getElementById("pdca-title").value.trim();
-  if (!title) { var m=document.getElementById("mmsg"); m.className="aerr"; m.textContent="Saisissez le titre."; m.style.display="block"; return; }
-  var p = document.getElementById("pdca-p").value;
-  var d2 = document.getElementById("pdca-d").value;
-  var c = document.getElementById("pdca-c").value;
-  var a = document.getElementById("pdca-a").value;
-  sRec("actions", {
-    title: "PDCA: "+title, type: "Corrective", origin: "NC",
-    description: "PLAN: "+p+"\nDO: "+d2+"\nCHECK: "+c+"\nACT: "+a,
-    status: "PLANNED", priority: "MEDIUM",
-    dueDate: document.getElementById("pdca-end").value
-  }, null).then(function(){ closeMod(); toast("PDCA enregistre dans Actions!"); });
-}
-
-// ── SWOT ────────────────────────────────────────────────────────
-function pgSWOT() {
-  document.getElementById("mtit").textContent = "Analyse SWOT QHSE";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Sauvegarder dans Documents";
-  document.getElementById("msave").onclick = saveSWOT;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var quads = [
-    {id:'s',label:'FORCES (Strengths)',color:'#22c55e',icon:'&#x2B06;',bg:'#22c55e08',desc:'Atouts internes: certifications, equipe, procedures...'},
-    {id:'w',label:'FAIBLESSES (Weaknesses)',color:'#ef4444',icon:'&#x2B07;',bg:'#ef444408',desc:'Points a ameliorer: manque de ressources, NC recurrentes...'},
-    {id:'o',label:'OPPORTUNITES (Opportunities)',color:'#4f6ef7',icon:'&#x1F31F;',bg:'#4f6ef708',desc:'Facteurs externes favorables: reglementation, marche, tech...'},
-    {id:'t',label:'MENACES (Threats)',color:'#f59e0b',icon:'&#x26A1;',bg:'#f59e0b08',desc:'Risques externes: concurrence, nouvelles lois, accidents...'},
-  ];
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="f"><label>Perimetre de l\'analyse</label>'
-    +'<input id="swot-scope" type="text" placeholder="Ex: Systeme QHSE 2025, Site de production Abidjan"/></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-
-  quads.forEach(function(q) {
-    html += '<div style="background:'+q.bg+';border:1px solid '+q.color+'30;border-radius:10px;padding:12px">'
-      +'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:'+q.color+'">'+q.icon+' '+q.label+'</p>'
-      +'<p style="margin:0 0 8px;font-size:10px;color:#6b6f96">'+q.desc+'</p>'
-      +'<textarea id="swot-'+q.id+'" rows="4" placeholder="- Item 1&#10;- Item 2&#10;- Item 3" style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:12px;box-sizing:border-box;resize:vertical"></textarea>'
-      +'</div>';
-  });
-
-  html += '</div></div>';
-  document.getElementById("mflds").innerHTML = html;
-  showMod();
-}
-
-function saveSWOT() {
-  var scope = document.getElementById("swot-scope").value.trim() || "SWOT QHSE";
-  var content = "ANALYSE SWOT — "+scope+"\n\nFORCES:\n"+document.getElementById("swot-s").value
-    +"\n\nFAIBLESSES:\n"+document.getElementById("swot-w").value
-    +"\n\nOPPORTUNITES:\n"+document.getElementById("swot-o").value
-    +"\n\nMENACES:\n"+document.getElementById("swot-t").value;
-  sRec("documents", {
-    title: "Analyse SWOT — "+scope, type: "Enregistrement",
-    version: "v1.0", status: "ACTIVE",
-    description: content
-  }, null).then(function(){ closeMod(); toast("Analyse SWOT enregistree dans Documents!"); });
-}
-
-// ── 8D ────────────────────────────────────────────────────────────
-function pg8D() {
-  document.getElementById("mtit").textContent = "Rapport 8D — 8 Disciplines";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer";
-  document.getElementById("msave").onclick = save8D;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var steps = [
-    {n:'D1',l:'Constituer l\'equipe',color:'#4f6ef7',ph:'Responsable 8D, membres equipe, competences...'},
-    {n:'D2',l:'Decrire le probleme',color:'#7c5cf6',ph:'QUI, QUOI, OU, QUAND, COMMENT, COMBIEN, POURQUOI...'},
-    {n:'D3',l:'Actions immediates (containment)',color:'#f59e0b',ph:'Actions de protection immediates pour limiter l\'impact...'},
-    {n:'D4',l:'Identifier les causes racines',color:'#ef4444',ph:'5 Pourquoi, Ishikawa... La cause racine est...'},
-    {n:'D5',l:'Actions correctives permanentes',color:'#22c55e',ph:'Actions pour eliminer la cause racine...'},
-    {n:'D6',l:'Mise en oeuvre et validation',color:'#22c55e',ph:'Plan d\'action, responsable, delai, criteres de validation...'},
-    {n:'D7',l:'Prevention recidive (systeme)',color:'#38bdf8',ph:'Procedures modifiees, formations, plans de controle...'},
-    {n:'D8',l:'Cloture et felicitations',color:'#6b7280',ph:'Validation finale, lecons apprises, remerciements equipe...'},
-  ];
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="f"><label>Titre du rapport 8D</label>'
-    +'<input id="8d-title" type="text" placeholder="Ex: 8D — Incident manutention entrepot Abidjan"/></div>';
-
-  steps.forEach(function(step) {
-    html += '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">'
-      +'<div style="width:36px;height:36px;border-radius:8px;background:'+step.color+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">'+step.n+'</div>'
-      +'<div style="flex:1"><label style="display:block;font-size:11px;font-weight:700;color:'+step.color+';margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">'+step.l+'</label>'
-      +'<textarea id="8d-'+step.n.toLowerCase()+'" rows="2" placeholder="'+step.ph+'" style="width:100%;background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:12px;box-sizing:border-box;resize:vertical"></textarea>'
-      +'</div></div>';
-  });
-
-  html += '</div>';
-  document.getElementById("mflds").innerHTML = html;
-  showMod();
-}
-
-function save8D() {
-  var title = document.getElementById("8d-title").value.trim();
-  if (!title) { var m=document.getElementById("mmsg"); m.className="aerr"; m.textContent="Saisissez le titre."; m.style.display="block"; return; }
-  var steps = ['d1','d2','d3','d4','d5','d6','d7','d8'];
-  var labels = ['D1-Equipe','D2-Probleme','D3-Containment','D4-Causes','D5-Actions correctives','D6-Validation','D7-Prevention','D8-Cloture'];
-  var desc = steps.map(function(s,i){ var v = document.getElementById("8d-"+s).value.trim(); return v ? labels[i]+": "+v : ''; }).filter(Boolean).join("\n\n");
-  sRec("nc", {
-    description: title, type: "Majeure", source: "Audit interne",
-    correction: document.getElementById("8d-d3").value,
-    correctiveAction: document.getElementById("8d-d5").value,
-    notes: desc, status: "IN PROGRESS"
-  }, null).then(function(){ closeMod(); toast("Rapport 8D enregistre dans NC!"); });
-}
-
-// ── PARETO ───────────────────────────────────────────────────────
-function pgPareto() {
-  document.getElementById("mtit").textContent = "Analyse de Pareto 80/20";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Actions";
-  document.getElementById("msave").onclick = savePareto;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="f"><label>Sujet analyse</label>'
-    +'<input id="par-title" type="text" placeholder="Ex: Types d\'incidents 2025, Causes de NC..."/></div>'
-    +'<div style="background:#1a1d2b;border-radius:10px;padding:14px;margin-bottom:12px">'
-    +'<p style="margin:0 0 10px;font-size:12px;font-weight:700">Saisir les categories et leur frequence / nombre</p>'
-    +'<div id="par-rows"></div>'
-    +'<button onclick="addParetoRow()" style="background:#4f6ef718;border:1px solid #4f6ef730;border-radius:8px;padding:7px 14px;color:#4f6ef7;cursor:pointer;font-size:12px;font-family:inherit;margin-top:6px;width:100%">+ Ajouter une categorie</button>'
-    +'</div>'
-    +'<div id="par-chart" style="margin-top:10px;display:none">'
-    +'<p style="font-size:12px;font-weight:700;margin:0 0 10px">Resultat — 20% des causes = 80% des problemes</p>'
-    +'<div id="par-svg-container"></div>'
-    +'</div>'
-    +'<button onclick="calcPareto()" style="background:#4f6ef7;border:none;border-radius:8px;padding:9px 18px;color:#fff;cursor:pointer;font-size:13px;font-family:inherit;width:100%;margin-top:8px">Calculer et afficher le Pareto</button>'
-    +'</div>';
-
-  document.getElementById("mflds").innerHTML = html;
-
-  // Add 3 initial rows
-  for(var i=0;i<3;i++) addParetoRow();
-  showMod();
-}
-
-function addParetoRow() {
-  var rows = document.getElementById("par-rows"); if(!rows) return;
-  var div = document.createElement("div");
-  div.style.cssText = "display:flex;gap:8px;margin-bottom:6px;align-items:center";
-  div.innerHTML = '<input type="text" placeholder="Categorie" style="flex:2;background:#131620;border:1px solid #232640;border-radius:8px;padding:7px 10px;color:#e2e5f5;font-size:13px;box-sizing:border-box"/>'
-    +'<input type="number" placeholder="Nb" min="0" style="flex:1;background:#131620;border:1px solid #232640;border-radius:8px;padding:7px 10px;color:#e2e5f5;font-size:13px;box-sizing:border-box"/>'
-    +'<button onclick="this.parentNode.remove()" style="background:#ef444415;border:1px solid #ef444430;border-radius:6px;padding:6px 8px;color:#ef4444;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0">×</button>';
-  rows.appendChild(div);
-}
-
-function calcPareto() {
-  var rows = document.getElementById("par-rows").children;
-  var items = [];
-  Array.from(rows).forEach(function(row) {
-    var inputs = row.querySelectorAll("input");
-    var label = inputs[0].value.trim();
-    var val = parseFloat(inputs[1].value)||0;
-    if (label && val > 0) items.push({l:label, v:val});
-  });
-  if (items.length < 2) { alert("Saisissez au moins 2 categories avec des valeurs."); return; }
-  items.sort(function(a,b){return b.v-a.v;});
-  var total = items.reduce(function(s,i){return s+i.v;},0);
-  var cumul = 0;
-  var colors3 = ['#ef4444','#f97316','#f59e0b','#22c55e','#4f6ef7','#7c5cf6','#ec4899','#38bdf8'];
-  var w = 320; var h = 140; var bw = Math.floor((w-30)/items.length)-4;
-  var mx = items[0].v;
-  var svg = '<svg width="100%" height="'+h+'" viewBox="0 0 '+w+' '+h+'" style="overflow:visible">';
-  items.forEach(function(item, i) {
-    cumul += item.v;
-    var pct = Math.round(item.v/total*100);
-    var cpct = Math.round(cumul/total*100);
-    var barH = Math.round((item.v/mx)*(h-40));
-    var x = 20 + i*(bw+4);
-    var c = colors3[i%colors3.length];
-    svg += '<rect x="'+x+'" y="'+(h-barH-20)+'" width="'+bw+'" height="'+barH+'" rx="3" fill="'+c+'" opacity="0.85"/>';
-    svg += '<text x="'+(x+bw/2)+'" y="'+(h-barH-23)+'" text-anchor="middle" fill="'+c+'" font-size="9" font-weight="700">'+pct+'%</text>';
-    svg += '<text x="'+(x+bw/2)+'" y="'+(h-5)+'" text-anchor="middle" fill="#6b6f96" font-size="8">'+item.l.substring(0,10)+'</text>';
-    // Cumulative line point
-    if (i < items.length-1) {
-      var nx = 20 + (i+1)*(bw+4) + bw/2;
-      var cx2 = x + bw/2;
-      var cy2 = h - 20 - Math.round((cpct/100)*(h-40));
-      var nextCumul = cumul + items[i+1].v;
-      var ncy = h - 20 - Math.round((Math.round(nextCumul/total*100)/100)*(h-40));
-      svg += '<line x1="'+cx2+'" y1="'+cy2+'" x2="'+(nx)+'" y2="'+ncy+'" stroke="#fff" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>';
-      svg += '<circle cx="'+cx2+'" cy="'+cy2+'" r="3" fill="#fff"/>';
-      svg += '<text x="'+cx2+'" y="'+(cy2-5)+'" text-anchor="middle" fill="#fff" font-size="8">'+cpct+'%</text>';
-    }
-  });
-  // 80% line
-  var y80 = h - 20 - Math.round(0.8*(h-40));
-  svg += '<line x1="15" y1="'+y80+'" x2="'+(w-5)+'" y2="'+y80+'" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>';
-  svg += '<text x="10" y="'+(y80-2)+'" fill="#ef4444" font-size="8" font-weight="700">80%</text>';
-  svg += '</svg>';
-
-  var chart = document.getElementById("par-chart");
-  var container = document.getElementById("par-svg-container");
-  if (chart && container) {
-    container.innerHTML = svg;
-    chart.style.display = "block";
-  }
-  // Show Pareto result text
-  var vital20 = items.slice(0, Math.ceil(items.length*0.2));
-  var vital_pct = Math.round(vital20.reduce(function(s,i){return s+i.v;},0)/total*100);
-  alert("Principe de Pareto:\nLes "+vital20.length+" premiere(s) categorie(s) representent "+vital_pct+"% des problemes.\n\nFocalisez vos actions sur: "+vital20.map(function(i){return i.l;}).join(", "));
-}
-
-function savePareto() {
-  var title = document.getElementById("par-title").value.trim() || "Analyse Pareto";
-  closeMod();
-  toast("Analyse Pareto enregistree!");
-}
-
-// ── BOW-TIE ─────────────────────────────────────────────────────
-function pgBowTie() {
-  document.getElementById("mtit").textContent = "Analyse Noeud Papillon (Bow-Tie)";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Risques";
-  document.getElementById("msave").onclick = saveBowTie;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="f"><label>Evenement Redoute Central (ERC)</label>'
-    +'<input id="bt-event" type="text" placeholder="Ex: Incendie en zone de stockage, Accident grave de manutention"/></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div style="background:#ef444408;border:1px solid #ef444430;border-radius:10px;padding:12px">'
-    +'<p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#ef4444">⬅ CAUSES (Prevention)</p>'
-    +'<p style="font-size:10px;color:#6b6f96;margin:0 0 8px">Sources du danger menant a l\'ERC</p>'
-    +'<textarea id="bt-causes" rows="3" placeholder="- Fuite de produit inflammable&#10;- Chaleur excessive&#10;- Source d\'ignition" style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:12px;box-sizing:border-box;resize:vertical"></textarea>'
-    +'<p style="margin:8px 0 4px;font-size:10px;font-weight:700;color:#ef4444">Barrieres de PREVENTION</p>'
-    +'<textarea id="bt-prev2" rows="2" placeholder="- Detecteurs de gaz&#10;- Procedures stockage" style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:12px;box-sizing:border-box;resize:vertical"></textarea>'
-    +'</div>'
-    +'<div style="background:#f59e0b08;border:1px solid #f59e0b30;border-radius:10px;padding:12px">'
-    +'<p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#f59e0b">CONSEQUENCES ➡ (Protection)</p>'
-    +'<p style="font-size:10px;color:#6b6f96;margin:0 0 8px">Effets si l\'ERC se produit</p>'
-    +'<textarea id="bt-conseq" rows="3" placeholder="- Blessures graves&#10;- Destruction equipements&#10;- Pollution" style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:12px;box-sizing:border-box;resize:vertical"></textarea>'
-    +'<p style="margin:8px 0 4px;font-size:10px;font-weight:700;color:#f59e0b">Barrieres de PROTECTION</p>'
-    +'<textarea id="bt-prot" rows="2" placeholder="- Extincteurs automatiques&#10;- Plan evacuation" style="width:100%;background:#131620;border:1px solid #232640;border-radius:8px;padding:8px;color:#e2e5f5;font-size:12px;box-sizing:border-box;resize:vertical"></textarea>'
-    +'</div></div>'
-    +'<div class="f" style="margin-top:10px"><label>Mesures de recuperation</label>'
-    +'<textarea id="bt-recov" rows="2" placeholder="Plan d\'urgence, SAMU, evacuation, communication de crise..."></textarea>'
-    +'</div></div>';
-
-  document.getElementById("mflds").innerHTML = html;
-  showMod();
-}
-
-function saveBowTie() {
-  var event2 = document.getElementById("bt-event").value.trim();
-  if (!event2) { var m=document.getElementById("mmsg"); m.className="aerr"; m.textContent="Decrivez l'evenement redoute."; m.style.display="block"; return; }
-  sRec("risks", {
-    hazard: "ERC: "+event2, type: "Autre",
-    situation: document.getElementById("bt-causes").value,
-    controls: document.getElementById("bt-prev2").value+" | Protection: "+document.getElementById("bt-prot").value,
-    newMeasures: document.getElementById("bt-recov").value,
-    notes: "Bow-Tie — Consequences: "+document.getElementById("bt-conseq").value,
-    level: "HIGH"
-  }, null).then(function(){ closeMod(); toast("Analyse Bow-Tie enregistree dans Risques!"); });
-}
-
-// ── LMRA ─────────────────────────────────────────────────────────
-function pgLMRA() {
-  document.getElementById("mtit").textContent = "LMRA — Evaluation Risques Derniere Minute";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer";
-  document.getElementById("msave").onclick = saveLMRA;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var questions = [
-    "Ai-je identifie tous les dangers lies a cette tache ?",
-    "Ai-je le permis de travail ou autorisation necessaire ?",
-    "Les EPI requis sont-ils disponibles et en bon etat ?",
-    "L\'environnement de travail est-il securise (acces, sol, eclairage) ?",
-    "Les equipements et outils sont-ils en bon etat ?",
-    "Les collegues a proximite sont-ils informes des risques ?",
-    "En cas d\'urgence, suis-je pret ? (extincteur, alarme, evacuation)",
-    "Ai-je les competences necessaires pour realiser cette tache ?",
-  ];
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="g2">'
-    +'<div class="f"><label>Tache a realiser</label><input id="lm-task" type="text" placeholder="Ex: Soudure en hauteur zone B"/></div>'
-    +'<div class="f"><label>Operateur</label><input id="lm-worker" type="text" placeholder="Ex: Konan Jean"/></div>'
-    +'</div>'
-    +'<div style="background:#1a1d2b;border-radius:10px;padding:14px;margin-bottom:12px">'
-    +'<p style="margin:0 0 12px;font-size:12px;font-weight:700">Checklist LMRA</p>';
-
-  questions.forEach(function(q, i) {
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #232640">'
-      +'<p style="margin:0;font-size:12px;flex:1;padding-right:10px">'+q+'</p>'
-      +'<div style="display:flex;gap:6px;flex-shrink:0">'
-      +'<label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;color:#22c55e"><input type="radio" name="lm-q'+i+'" value="oui" style="accent-color:#22c55e"/> OUI</label>'
-      +'<label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;color:#ef4444"><input type="radio" name="lm-q'+i+'" value="non" style="accent-color:#ef4444"/> NON</label>'
-      +'<label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;color:#6b6f96"><input type="radio" name="lm-q'+i+'" value="na" style="accent-color:#6b6f96"/> N/A</label>'
-      +'</div></div>';
-  });
-
-  html += '</div>'
-    +'<div class="f"><label>Mesures prises avant de commencer</label>'
-    +'<textarea id="lm-measures" rows="2" placeholder="Si des NON ont ete identifies, quelles mesures ont ete prises ?"></textarea>'
-    +'</div>'
-    +'<div style="background:#22c55e12;border:1px solid #22c55e30;border-radius:8px;padding:10px;font-size:12px;color:#22c55e">'
-    +'<strong>Regle:</strong> Si vous avez repondu NON a l\'une des questions et ne pouvez pas y remedier, STOP — ne commencez pas la tache.'
-    +'</div></div>';
-
-  document.getElementById("mflds").innerHTML = html;
-  showMod();
-}
-
-function saveLMRA() {
-  var task = document.getElementById("lm-task").value.trim();
-  if (!task) { var m=document.getElementById("mmsg"); m.className="aerr"; m.textContent="Decrivez la tache."; m.style.display="block"; return; }
-  var answers = [];
-  for(var i=0;i<8;i++){
-    var r = document.querySelector('input[name="lm-q'+i+'"]:checked');
-    answers.push(r?r.value:'?');
-  }
-  var nons = answers.filter(function(a){return a==='non';}).length;
-  var status = nons === 0 ? 'COMPLETED' : 'OPEN';
-  sRec("incidents", {
-    title: "LMRA: "+task, type: "Presqu accident",
-    severity: nons>2?'HIGH':'LOW',
-    location: document.getElementById("lm-worker").value,
-    description: "Checklist LMRA: "+answers.join(",")+"\nMesures: "+document.getElementById("lm-measures").value,
-    status: status
-  }, null).then(function(){ closeMod(); toast("LMRA enregistre"+(nons>0?" — "+nons+" point(s) NON identifie(s)":"")+"!"); });
-}
-
-// ── HIRA ─────────────────────────────────────────────────────────
-function pgHIRA() {
-  document.getElementById("mtit").textContent = "HIRA — Identification des Dangers et Evaluation des Risques";
-  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Risques";
-  document.getElementById("msave").onclick = saveHIRA;
-  document.getElementById("mmsg").style.display = "none";
-  document.getElementById("mbtns").style.display = "flex";
-
-  var html = '<div style="grid-column:1/-1">'
-    +'<div class="g2">'
-    +'<div class="f"><label>Activite / Poste de travail</label><input id="hi-activity" type="text" placeholder="Ex: Soudage, Conduite chariot, Travaux electriques"/></div>'
-    +'<div class="f"><label>Lieu / Site</label><input id="hi-site" type="text" placeholder="Ex: Atelier, Entrepot B, Toiture"/></div>'
-    +'</div>'
-    +'<div style="background:#1a1d2b;border-radius:10px;padding:14px;margin-bottom:12px">'
-    +'<p style="font-size:12px;font-weight:700;margin:0 0 12px">Identification des dangers</p>'
-    +'<div id="hira-rows"></div>'
-    +'<button onclick="addHIRARow()" style="background:#4f6ef718;border:1px solid #4f6ef730;border-radius:8px;padding:7px 14px;color:#4f6ef7;cursor:pointer;font-size:12px;font-family:inherit;width:100%;margin-top:6px">+ Ajouter un danger</button>'
-    +'</div>'
-    +'<div style="background:#1a1d2b;border-radius:10px;padding:12px;font-size:11px;color:#6b6f96">'
-    +'<strong style="color:#e2e5f5">Matrice de risque:</strong> Niveau = Probabilite × Gravite | '
-    +'<span style="color:#22c55e">1-4: Faible</span> | <span style="color:#f59e0b">5-12: Moyen</span> | <span style="color:#ef4444">15-25: Eleve</span>'
-    +'</div></div>';
-
-  document.getElementById("mflds").innerHTML = html;
-  for(var i=0;i<2;i++) addHIRARow();
-  showMod();
-}
-
-function addHIRARow() {
-  var rows = document.getElementById("hira-rows"); if(!rows) return;
-  var div = document.createElement("div");
-  div.style.cssText = "background:#131620;border-radius:8px;padding:10px;margin-bottom:8px;border:1px solid #232640";
-  div.innerHTML = '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:6px;align-items:end">'
-    +'<div><label style="font-size:9px;color:#6b6f96;text-transform:uppercase">Danger identifie</label>'
-    +'<input type="text" placeholder="Ex: Chute de hauteur" class="hi-danger" style="width:100%;background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:6px;color:#e2e5f5;font-size:12px;box-sizing:border-box"/></div>'
-    +'<div><label style="font-size:9px;color:#6b6f96;text-transform:uppercase">Probabilite (1-5)</label>'
-    +'<input type="number" min="1" max="5" value="1" class="hi-prob" oninput="calcHIRA(this)" style="width:100%;background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:6px;color:#e2e5f5;font-size:13px;font-weight:700;text-align:center;box-sizing:border-box"/></div>'
-    +'<div><label style="font-size:9px;color:#6b6f96;text-transform:uppercase">Gravite (1-5)</label>'
-    +'<input type="number" min="1" max="5" value="1" class="hi-grav" oninput="calcHIRA(this)" style="width:100%;background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:6px;color:#e2e5f5;font-size:13px;font-weight:700;text-align:center;box-sizing:border-box"/></div>'
-    +'<div><label style="font-size:9px;color:#6b6f96;text-transform:uppercase">Niveau</label>'
-    +'<div class="hi-level" style="background:#22c55e20;color:#22c55e;border-radius:6px;padding:6px;text-align:center;font-size:12px;font-weight:700">Faible</div></div>'
-    +'</div>'
-    +'<div style="margin-top:6px;display:flex;gap:6px">'
-    +'<input type="text" placeholder="Mesures de maitrise existantes" class="hi-ctrl" style="flex:1;background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:6px;color:#e2e5f5;font-size:11px;box-sizing:border-box"/>'
-    +'<button onclick="this.closest(\'div[style]\').remove()" style="background:#ef444415;border:1px solid #ef444430;border-radius:6px;padding:5px 9px;color:#ef4444;cursor:pointer;font-size:14px">×</button>'
-    +'</div>';
-  rows.appendChild(div);
-}
-
-function calcHIRA(el) {
-  var row = el.closest('div[style*="background:#131620"]');
-  if (!row) return;
-  var p = parseInt(row.querySelector('.hi-prob').value)||1;
-  var g = parseInt(row.querySelector('.hi-grav').value)||1;
-  var score = p * g;
-  var lbl = row.querySelector('.hi-level');
-  var c2, txt;
-  if (score <= 4) { c2='#22c55e'; txt='Faible ('+score+')'; }
-  else if (score <= 12) { c2='#f59e0b'; txt='Moyen ('+score+')'; }
-  else { c2='#ef4444'; txt='Eleve ('+score+')'; }
-  lbl.style.background = c2+'20'; lbl.style.color = c2; lbl.textContent = txt;
-}
-
-function saveHIRA() {
-  var activity = document.getElementById("hi-activity").value.trim();
-  var site = document.getElementById("hi-site").value.trim();
-  if (!activity) { var m=document.getElementById("mmsg"); m.className="aerr"; m.textContent="Decrivez l'activite."; m.style.display="block"; return; }
-  var rows = document.querySelectorAll("#hira-rows div[style*='background:#131620']");
-  var saved = 0;
-  var promises = [];
-  rows.forEach(function(row) {
-    var danger = row.querySelector('.hi-danger').value.trim();
-    var p = parseInt(row.querySelector('.hi-prob').value)||1;
-    var g = parseInt(row.querySelector('.hi-grav').value)||1;
-    var ctrl = row.querySelector('.hi-ctrl').value.trim();
-    if (!danger) return;
-    var score = p*g;
-    var level = score<=4?'LOW':score<=12?'MEDIUM':'CRITICAL';
-    promises.push(sRec("risks", {
-      hazard: danger, unit: activity, site: site,
-      probability: p, gravity: g, level: level,
-      controls: ctrl, type: "Autre",
-      notes: "HIRA — Activite: "+activity
-    }, null));
-    saved++;
-  });
-  Promise.all(promises).then(function(){
-    closeMod(); toast(saved+" danger(s) enregistre(s) dans Risques!");
-  });
-}
-
-// ================================================================
 // UI HELPERS
 // ================================================================
-
-function applyLangToUI() {
-  // Update lang button flag
-  updateLangBtn();
-  // Update auth page tabs if visible
-  var tl = document.getElementById("tl");
-  var tr2 = document.getElementById("tr");
-  if (tl) tl.textContent = t("login");
-  if (tr2) tr2.textContent = t("register");
-  // Update login button
-  var loginBtn = document.querySelector('#fl .btn.bp');
-  if (loginBtn) loginBtn.innerHTML = t("login") + " &rarr;";
-  var regBtn = document.querySelector('#fr .btn.bp');
-  if (regBtn) regBtn.innerHTML = t("register") + " &rarr;";
-  var logoutLbl = document.getElementById('nav-logout');
-  if(logoutLbl) logoutLbl.textContent = t('logout');
-  var profLbl = document.getElementById('nav-profile');
-  if(profLbl) profLbl.textContent = t('profile');
-  // Update topbar title
-  var n = NAV.find(function(n){return n.k===S.pg;});
-  var ttlEl = document.getElementById("ttl");
-  if (ttlEl && n) ttlEl.textContent = t(n.k) || n.l;
-}
-
-function togLangDD() {
-  var dd = document.getElementById("lang-dd");
-  if (!dd) return;
-  if (dd.style.display === "block") { dd.style.display = "none"; return; }
-  // Build list
-  var list = document.getElementById("lang-list");
-  if (list) {
-    list.innerHTML = "";
-    LANG_OPTIONS.forEach(function(opt) {
-      var btn = document.createElement("button");
-      btn.style.cssText = "width:100%;padding:9px 14px;background:" + (CL===opt.code?"#4f6ef718":"transparent") + ";border:none;border-bottom:1px solid #232640;cursor:pointer;color:" + (CL===opt.code?"#4f6ef7":"#e2e5f5") + ";font-size:13px;font-family:inherit;text-align:left;display:flex;align-items:center;gap:9px";
-      btn.innerHTML = "<span style='font-size:16px'>" + opt.flag + "</span><span>" + opt.name + "</span>" + (CL===opt.code?"<span style='margin-left:auto;color:#4f6ef7'>✓</span>":"");
-      btn.onclick = function() { dd.style.display="none"; setLang(opt.code); updateLangBtn(); };
-      list.appendChild(btn);
-    });
-  }
-  dd.style.display = "block";
-}
-function updateLangBtn() {
-  var opt = LANG_OPTIONS.find(function(o){return o.code===CL;});
-  var flag = document.getElementById("lang-flag");
-  if (flag && opt) flag.textContent = opt.flag;
-}
-// Close lang dropdown on outside click
-document.addEventListener("click", function(e) {
-  var wrap = document.getElementById("lang-dd-wrap");
-  if (wrap && !wrap.contains(e.target)) {
-    var dd = document.getElementById("lang-dd");
-    if (dd) dd.style.display = "none";
-  }
-});
-
 function closeSide() {
   if (window.innerWidth < 768) {
     document.getElementById("side").className = "off";
@@ -3661,4 +2568,4 @@ document.addEventListener("keydown", function(e) {
 </script>
 </body>
 </html>
-<!-- PATCH INJECTION POINT - will be removed by next step --><!-- INSERT_OUTILS -->
+<!-- PATCH INJECTION POINT - will be removed by next step -->
