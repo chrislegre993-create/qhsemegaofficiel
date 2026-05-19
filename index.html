@@ -1727,7 +1727,97 @@ async function pgCRUD(mk) {
       return '<tr style="'+bg+'">'+tds+'<td><div style="display:flex;gap:3px"><button data-action="edit" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+"</button>"+'<button data-action="del" data-id="'+row.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+"</button></div></td></tr>";
     }).join("");
 
-  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+filt.length+" enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">'+t('import_excel')+'</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' '+t("export_csv")+'</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' '+t("new_record")+'au</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder=t("search") value="'+xe(S.search)+'" oninput="S.search=this.value;pgCRUD(\''+mk+'\')" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody>"+trs+"</tbody></table></div></div></div>");
+  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+"<span id='crud-count'>"+ filt.length +"</span> enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">'+t('import_excel')+'</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' '+t("export_csv")+'</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' '+t("new_record")+'au</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder=t("search") value="'+xe(S.search)+'" id="crud-search-input" oninput="filterCRUD(this.value)" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody id='crud-tbody'>"+trs+"</tbody></table></div></div></div>");
+}
+
+
+// ================================================================
+// FAST LOCAL SEARCH - No network call, uses cache only
+// ================================================================
+function filterCRUD(q) {
+  var mk = S.pg;
+  S.search = q;
+  var rows = cache[mk] || [];
+  var q2 = (q||"").toLowerCase().trim();
+  var filt = q2 ? rows.filter(function(r){
+    return Object.values(r).some(function(v){
+      return String(v||"").toLowerCase().indexOf(q2) >= 0;
+    });
+  }) : rows;
+  var def = M[mk];
+  if (!def) return;
+  var trs = !filt.length
+    ? '<tr><td colspan="'+(def.c.length+1)+'" style="text-align:center;color:#6b6f96;padding:28px">'+t("no_records")+'</td></tr>'
+    : filt.map(function(row) {
+        var bg = (row.status==="NON CONFORME"||row.status==="EXPIRE") ? "background:#ef444408;" :
+                 (row.status==="A RENOUVELER"||row.status==="OVERDUE") ? "background:#f59e0b06;" : "";
+        var tds = def.c.map(function(col){
+          var v = row[col.k];
+          if (col.b) return "<td>"+bdg(v||"")+"</td>";
+          if (col.e) return "<td>"+ebdg(v)+"</td>";
+          return '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+xe(v==null?"--":String(v))+"</td>";
+        }).join("");
+        return '<tr style="'+bg+'">'+tds
+          +'<td><div style="display:flex;gap:3px">'
+          +'<button data-action="edit" data-mk="'+mk+'" data-id="'+row.id
+          +'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+'</button>'
+          +'<button data-action="del" data-id="'+row.id
+          +'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+'</button>'
+          +'</div></td></tr>';
+      }).join("");
+  var tbody = document.getElementById("crud-tbody");
+  if (tbody) tbody.innerHTML = trs;
+  var cnt = document.getElementById("crud-count");
+  if (cnt) cnt.textContent = filt.length;
+}
+
+function filterEmployee(q) {
+  S.search = q;
+  var rows = cache["employees"] || [];
+  var ppeRows = cache["ppe"] || [];
+  var q2 = (q||"").toLowerCase().trim();
+  var filt = q2 ? rows.filter(function(r){
+    return Object.values(r).some(function(v){
+      return String(v||"").toLowerCase().indexOf(q2) >= 0;
+    });
+  }) : rows;
+  var trs = !filt.length
+    ? '<tr><td colspan="9" style="text-align:center;color:#6b6f96;padding:28px">'+t("no_records")+'</td></tr>'
+    : filt.map(function(emp) {
+        var ppeBadges = '<span style="color:#6b6f96;font-size:11px">--</span>';
+        if (emp.assignedPPE) {
+          var links = emp.assignedPPE.split("\n").map(function(line) {
+            var ln = line.trim(); if (!ln) return "";
+            var found = ppeRows.find(function(p){ return p.ref===ln || String(p.id)===ln; });
+            if (found) {
+              var c2 = found.status==="EXPIRE"?"#ef4444":found.status==="A RENOUVELER"?"#f59e0b":"#22c55e";
+              return '<span class="bdg" style="background:'+c2+'22;color:'+c2+';border:1px solid '+c2+'44">'+xe((found.type||ln).substring(0,10))+'</span>';
+            }
+            return '<span class="bdg" style="background:#6b728022;color:#6b7280;border:1px solid #6b728040">'+xe(ln.substring(0,10))+'</span>';
+          }).filter(Boolean);
+          if (links.length) ppeBadges = links.join(" ");
+        }
+        var d = dl(emp.nextMedical);
+        var mc = d===null?"#6b6f96":d<0?"#ef4444":"#22c55e";
+        return '<tr>'
+          +'<td>'+xe(emp.ref||"--")+'</td>'
+          +'<td style="font-weight:600">'+xe(emp.fullName||"--")+'</td>'
+          +'<td>'+xe(emp.position||"--")+'</td>'
+          +'<td>'+xe(emp.site||"--")+'</td>'
+          +'<td>'+ppeBadges+'</td>'
+          +'<td>'+xe(emp.lastMedical||"--")+'</td>'
+          +'<td style="color:'+mc+';font-weight:600">'+xe(emp.nextMedical||"--")+'</td>'
+          +'<td>'+bdg(emp.status||"")+'</td>'
+          +'<td><div style="display:flex;gap:3px">'
+          +'<button data-action="empdet" data-id="'+emp.id+'" style="background:#4f6ef718;border:1px solid #4f6ef730;border-radius:6px;padding:3px 7px;cursor:pointer;color:#4f6ef7;font-size:10px;font-family:inherit;font-weight:600">Fiche</button>'
+          +'<button data-action="edit" data-mk="employees" data-id="'+emp.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+'</button>'
+          +'<button data-action="del" data-id="'+emp.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+'</button>'
+          +'</div></td></tr>';
+      }).join("");
+  var tbody = document.getElementById("emp-tbody");
+  if (tbody) tbody.innerHTML = trs;
+  var cnt = document.getElementById("emp-count");
+  if (cnt) cnt.textContent = filt.length;
 }
 
 async function pgSites() {
