@@ -269,7 +269,7 @@ create trigger on_auth_user_created
 
 
 <!-- PWA Install Banner -->
-<div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);z-index:9001;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px #00000044">
+<div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);z-index:9001;padding:14px 16px;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px #00000044">
   <div style="display:flex;align-items:center;gap:12px;flex:1">
     <img src="./icon-192.png" width="40" height="40" style="border-radius:10px;flex-shrink:0"/>
     <div>
@@ -279,7 +279,7 @@ create trigger on_auth_user_created
   </div>
   <div style="display:flex;gap:8px;flex-shrink:0">
     <button id="pwa-install-btn" style="background:#fff;color:#4f6ef7;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">Installer</button>
-    <button onclick="document.getElementById('pwa-banner').style.display='none';localStorage.setItem('pwa-banner-dismissed','1')" style="background:transparent;border:2px solid #ffffff66;border-radius:8px;padding:8px 12px;color:#fff;cursor:pointer;font-size:12px;font-family:inherit">✕</button>
+    <button onclick="document.getElementById('pwa-banner').style.display='none';localStorage.setItem('pwa-banner-dismissed','1');localStorage.setItem('pwa-installed','1');" style="background:transparent;border:2px solid #ffffff66;border-radius:8px;padding:8px 12px;color:#fff;cursor:pointer;font-size:12px;font-family:inherit">✕</button>
   </div>
 </div>
 
@@ -3672,7 +3672,22 @@ function saveHIRA() {
 
 var _swReg = null;
 var _deferredInstall = null;
-var _pushEnabled = false;
+
+// Persist push state across sessions
+function getPushEnabled() {
+  return localStorage.getItem('qhse_push_enabled') === '1' && Notification.permission === 'granted';
+}
+function setPushEnabled(val) {
+  localStorage.setItem('qhse_push_enabled', val ? '1' : '0');
+  updatePushBtn();
+}
+
+// Check if running as installed PWA (standalone)
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true
+    || document.referrer.includes('android-app://');
+}
 
 // ── Service Worker Registration ──────────────────────────────────
 function initSW() {
@@ -3680,37 +3695,46 @@ function initSW() {
   navigator.serviceWorker.register('./sw.js', {scope: './'})
     .then(function(reg) {
       _swReg = reg;
-      console.log('SW registered:', reg.scope);
-      // Check if push already enabled
-      if (reg.pushManager) {
+      // Re-activate push if it was enabled before
+      if (getPushEnabled() && reg.pushManager) {
         reg.pushManager.getSubscription().then(function(sub) {
-          _pushEnabled = !!sub;
-          updatePushBtn();
+          if (!sub && Notification.permission === 'granted') {
+            // Permission still granted, re-enable local notifications
+            scheduleAlertNotifications();
+          }
         });
+        scheduleAlertNotifications();
       }
-      // Listen for SW messages (navigation from notification click)
+      updatePushBtn();
+      // Listen for SW messages
       navigator.serviceWorker.addEventListener('message', function(e) {
         if (e.data && e.data.type === 'NAVIGATE') goto('dashboard');
         if (e.data && e.data.type === 'SYNC_READY') {
-          toast('Connexion retablie - synchronisation en cours');
-          cache = {};  // invalidate cache so next gRecs fetches fresh
+          toast('Connexion retablie - synchronisation...');
+          cache = {};
           if (S.pg) goto(S.pg);
         }
       });
     })
-    .catch(function(err) { console.warn('SW registration failed:', err); });
+    .catch(function(err) { console.warn('SW failed:', err); });
 }
 
 // ── PWA Install Prompt ───────────────────────────────────────────
+// Never show banner if: already installed (standalone), or previously dismissed
+function shouldShowBanner() {
+  if (isStandalone()) return false;
+  if (localStorage.getItem('pwa-installed') === '1') return false;
+  if (localStorage.getItem('pwa-banner-dismissed') === '1') return false;
+  return true;
+}
+
 window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   _deferredInstall = e;
-  // Show banner if not dismissed
-  if (!localStorage.getItem('pwa-banner-dismissed')) {
+  if (shouldShowBanner()) {
     var banner = document.getElementById('pwa-banner');
     if (banner) banner.style.display = 'flex';
   }
-  // Wire up install button
   var btn = document.getElementById('pwa-install-btn');
   if (btn) {
     btn.onclick = function() {
@@ -3721,36 +3745,43 @@ window.addEventListener('beforeinstallprompt', function(e) {
         var banner = document.getElementById('pwa-banner');
         if (banner) banner.style.display = 'none';
         if (choice.outcome === 'accepted') {
-          toast('QHSE MEGA installe sur votre telephone!');
+          localStorage.setItem('pwa-installed', '1');
           localStorage.setItem('pwa-banner-dismissed', '1');
+          toast("QHSE MEGA installe! Icone disponible sur votre ecran d accueil.");
         }
       });
     };
   }
 });
 
+// Mark as installed when app is installed
 window.addEventListener('appinstalled', function() {
   _deferredInstall = null;
+  localStorage.setItem('pwa-installed', '1');
+  localStorage.setItem('pwa-banner-dismissed', '1');
   var banner = document.getElementById('pwa-banner');
   if (banner) banner.style.display = 'none';
-  toast('Application installee avec succes!');
+  toast("Application installee! Icone disponible sur votre ecran d accueil.");
 });
 
-// ── Push Notifications ───────────────────────────────────────────
-var VAPID_PUBLIC_KEY = '';  // Set your VAPID key here if using a push server
-                              // For basic local notifications, not needed
+// Hide banner immediately if already running as standalone app
+(function() {
+  if (isStandalone()) {
+    localStorage.setItem('pwa-installed', '1');
+    var banner = document.getElementById('pwa-banner');
+    if (banner) banner.style.display = 'none';
+  }
+})();
 
+// ── Push Notifications ───────────────────────────────────────────
 function updatePushBtn() {
+  var enabled = getPushEnabled();
   var dot = document.getElementById('push-dot');
   var ico = document.getElementById('push-ico');
-  if (!dot) return;
-  if (_pushEnabled) {
-    dot.style.display = 'block';
-    if (ico) ico.style.color = '#22c55e';
-  } else {
-    dot.style.display = 'none';
-    if (ico) ico.style.color = '';
-  }
+  var btn = document.getElementById('push-btn');
+  if (dot) dot.style.display = enabled ? 'block' : 'none';
+  if (ico) ico.style.color = enabled ? '#22c55e' : '';
+  if (btn) btn.title = enabled ? 'Notifications activees (cliquer pour desactiver)' : 'Activer les notifications push';
 }
 
 async function togPushNotif() {
@@ -3758,85 +3789,80 @@ async function togPushNotif() {
     toast('Notifications non supportees sur ce navigateur', true);
     return;
   }
-
-  if (_pushEnabled) {
-    // Disable notifications
-    if (_swReg && _swReg.pushManager) {
-      var sub = await _swReg.pushManager.getSubscription();
-      if (sub) await sub.unsubscribe();
-    }
-    _pushEnabled = false;
-    updatePushBtn();
+  if (getPushEnabled()) {
+    // Disable
+    setPushEnabled(false);
     toast('Notifications desactivees');
     return;
   }
-
   // Request permission
   var permission = await Notification.requestPermission();
   if (permission !== 'granted') {
-    toast('Permission refusee - activez les notifications dans les reglages du navigateur', true);
+    toast('Activez les notifications dans les reglages de votre navigateur/telephone', true);
     return;
   }
-
-  _pushEnabled = true;
-  updatePushBtn();
-  toast('Notifications activees!');
-
-  // Send a test notification
+  // Save enabled state BEFORE anything else
+  setPushEnabled(true);
+  toast('Notifications activees! Vous serez alerté des echeances et urgences.');
+  // Test notification
   setTimeout(function() {
     showLocalNotif(
       'QHSE MEGA - Notifications activees',
-      'Vous recevrez des alertes pour les echeances, EPI expires, et incidents urgents.',
+      'Vous recevrez des alertes pour EPI expires, vehicules, actions en retard et incidents urgents.',
       false
     );
-  }, 1000);
-
-  // Schedule alert checks
+  }, 800);
   scheduleAlertNotifications();
 }
 
 function showLocalNotif(title, body, urgent) {
   if (Notification.permission !== 'granted') return;
-  if (_swReg) {
-    _swReg.showNotification(title, {
-      body: body,
-      icon: './icon-192.png',
-      badge: './icon-192.png',
-      tag: 'qhse-' + Date.now(),
-      requireInteraction: urgent || false,
-      actions: [{action:'open', title:'Ouvrir QHSE MEGA'}]
-    });
-  } else {
-    new Notification(title, {body: body, icon: './icon-192.png'});
-  }
+  try {
+    if (_swReg) {
+      _swReg.showNotification(title, {
+        body: body,
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        tag: 'qhse-' + Date.now(),
+        requireInteraction: urgent || false,
+        actions: [{action:'open', title:'Ouvrir'}]
+      });
+    } else {
+      new Notification(title, {body: body, icon: './icon-192.png'});
+    }
+  } catch(e) { console.warn('Notification error:', e); }
 }
 
+var _alertInterval = null;
 function scheduleAlertNotifications() {
-  // Check alerts every 30 minutes and send notification if urgent items found
+  // Clear existing interval to avoid duplicates
+  if (_alertInterval) clearInterval(_alertInterval);
+
   function checkAndNotify() {
-    if (!_pushEnabled || Notification.permission !== 'granted') return;
+    if (!getPushEnabled()) return;
     var alerts = computeAlerts();
     if (!alerts.length) return;
     var urgent = alerts.filter(function(a) { return a.days !== null && a.days <= 0; });
     var soon = alerts.filter(function(a) { return a.days !== null && a.days > 0 && a.days <= 3; });
     if (urgent.length > 0) {
       showLocalNotif(
-        'QHSE MEGA - ' + urgent.length + ' alerte(s) urgente(s)!',
-        urgent.slice(0,3).map(function(a){return '• '+a.text;}).join('\n'),
+        'QHSE MEGA ⚠ ' + urgent.length + ' alerte(s) urgente(s)!',
+        urgent.slice(0,3).map(function(a){ return '\u2022 ' + a.text; }).join('\n'),
+
         true
       );
     } else if (soon.length > 0) {
       showLocalNotif(
-        'QHSE MEGA - ' + soon.length + ' echeance(s) dans les 3 jours',
-        soon.slice(0,3).map(function(a){return '• '+a.text+' ('+a.days+'j)';}).join('\n'),
+        'QHSE MEGA - ' + soon.length + ' echeance(s) dans 3 jours',
+        soon.slice(0,3).map(function(a){ return '\u2022 ' + a.text + ' (' + a.days + 'j)'; }).join('\n'),
+
         false
       );
     }
   }
 
-  // Check immediately then every 30 min
-  setTimeout(checkAndNotify, 5000);
-  setInterval(checkAndNotify, 30 * 60 * 1000);
+  setTimeout(checkAndNotify, 3000);
+  _alertInterval = setInterval(checkAndNotify, 30 * 60 * 1000);
 }
 
 // ── Offline indicator ────────────────────────────────────────────
@@ -3849,12 +3875,11 @@ function initOfflineDetect() {
         var bar = document.createElement('div');
         bar.id = 'offline-bar';
         bar.style.cssText = 'position:fixed;top:50px;left:0;right:0;background:#f59e0b;color:#000;text-align:center;padding:6px;font-size:12px;font-weight:700;z-index:9000';
-        bar.textContent = '⚠ Hors ligne — Les donnees affichees peuvent ne pas etre a jour';
+        bar.textContent = 'Hors ligne — Donnees du cache affichees';
         document.body.appendChild(bar);
       }
     } else {
       if (existing) existing.remove();
-      // Back online: try to sync
       if (_swReg && 'sync' in _swReg) {
         _swReg.sync.register('qhse-sync').catch(function(){});
       }
@@ -3864,7 +3889,6 @@ function initOfflineDetect() {
   window.addEventListener('offline', updateOnline);
   updateOnline();
 }
-
 
 // ================================================================
 // UI HELPERS
