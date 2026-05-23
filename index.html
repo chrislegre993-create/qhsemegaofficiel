@@ -2,13 +2,23 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234f6ef7'/%3E%3Cpath d='M50 10L15 25v25c0 23 15.5 44.5 35 50 19.5-5.5 35-27 35-50V25L50 10z' fill='white'/%3E%3C/svg%3E"/>
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234f6ef7'/%3E%3Cpath d='M50 10L15 25v25c0 23 15.5 44.5 35 50 19.5-5.5 35-27 35-50V25L50 10z' fill='white'/%3E%3C/svg%3E"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#4f6ef7" media="(prefers-color-scheme: dark)"/>
+<meta name="theme-color" content="#4f6ef7" media="(prefers-color-scheme: light)"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="QHSE MEGA"/>
+<link rel="manifest" href="./manifest.json"/>
+<link rel="apple-touch-icon" href="./icon-192.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png"/>
+
+
 <title>QHSE MEGA Cloud</title>
 <meta name="description" content="Système de Management QHSE Cloud - Données synchronisées"/>
-<link rel="manifest" href="manifest.json"/>
-<meta name="theme-color" content="#4f6ef7"/>
+
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
@@ -257,6 +267,22 @@ create trigger on_auth_user_created
   </div>
 </div>
 
+
+<!-- PWA Install Banner -->
+<div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);z-index:9001;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px #00000044">
+  <div style="display:flex;align-items:center;gap:12px;flex:1">
+    <img src="./icon-192.png" width="40" height="40" style="border-radius:10px;flex-shrink:0"/>
+    <div>
+      <p style="margin:0;font-weight:700;font-size:13px;color:#fff">Installer QHSE MEGA</p>
+      <p style="margin:0;font-size:11px;color:#ffffff99">Accédez comme une app native, hors ligne</p>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button id="pwa-install-btn" style="background:#fff;color:#4f6ef7;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">Installer</button>
+    <button onclick="document.getElementById('pwa-banner').style.display='none';localStorage.setItem('pwa-banner-dismissed','1')" style="background:transparent;border:2px solid #ffffff66;border-radius:8px;padding:8px 12px;color:#fff;cursor:pointer;font-size:12px;font-family:inherit">✕</button>
+  </div>
+</div>
+
 <div id="splash"><div class="spn"></div><p style="color:#6b6f96;font-size:13px">QHSE MEGA Cloud...</p></div>
 <div id="toast"></div>
 
@@ -331,7 +357,11 @@ create trigger on_auth_user_created
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" id="thico"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/></svg>
     </button>
     <div style="position:relative">
-      <button onclick="togNotif()" class="tbtn" id="nbtn">
+      <button onclick="togPushNotif()" id="push-btn" class="tbtn" title="Activer les notifications push" style="position:relative">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" id="push-ico"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+      <span id="push-dot" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;background:#22c55e;border-radius:50%;border:2px solid #131620"></span>
+    </button>
+    <button onclick="togNotif()" class="tbtn" id="nbtn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
         <span id="ncnt" style="background:#ef4444;color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center">0</span>
       </button>
@@ -2179,7 +2209,11 @@ document.addEventListener("click",function(e){var np=document.getElementById("np
     if (sess && sess.access_token) {
       SB_SESSION = sess;
       startApp()
-        .then(function(){ document.getElementById("splash").style.display="none"; })
+        .then(function(){
+          document.getElementById("splash").style.display="none";
+          initSW();
+          initOfflineDetect();
+        })
         .catch(function(e){
           console.error("startApp error:", e);
           SB_SESSION = null;
@@ -2192,6 +2226,8 @@ document.addEventListener("click",function(e){var np=document.getElementById("np
   } catch(e) { console.error("Session restore error:", e); }
   document.getElementById("splash").style.display="none";
   document.getElementById("auth").style.display="flex";
+  initSW();
+  initOfflineDetect();
 })();
 
 // ================================================================
@@ -3629,6 +3665,206 @@ function saveHIRA() {
     closeMod(); toast(saved+" danger(s) enregistre(s) dans Risques!");
   });
 }
+
+// ================================================================
+// PWA - SERVICE WORKER, INSTALL, PUSH NOTIFICATIONS
+// ================================================================
+
+var _swReg = null;
+var _deferredInstall = null;
+var _pushEnabled = false;
+
+// ── Service Worker Registration ──────────────────────────────────
+function initSW() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('./sw.js', {scope: './'})
+    .then(function(reg) {
+      _swReg = reg;
+      console.log('SW registered:', reg.scope);
+      // Check if push already enabled
+      if (reg.pushManager) {
+        reg.pushManager.getSubscription().then(function(sub) {
+          _pushEnabled = !!sub;
+          updatePushBtn();
+        });
+      }
+      // Listen for SW messages (navigation from notification click)
+      navigator.serviceWorker.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'NAVIGATE') goto('dashboard');
+        if (e.data && e.data.type === 'SYNC_READY') {
+          toast('Connexion retablie - synchronisation en cours');
+          cache = {};  // invalidate cache so next gRecs fetches fresh
+          if (S.pg) goto(S.pg);
+        }
+      });
+    })
+    .catch(function(err) { console.warn('SW registration failed:', err); });
+}
+
+// ── PWA Install Prompt ───────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _deferredInstall = e;
+  // Show banner if not dismissed
+  if (!localStorage.getItem('pwa-banner-dismissed')) {
+    var banner = document.getElementById('pwa-banner');
+    if (banner) banner.style.display = 'flex';
+  }
+  // Wire up install button
+  var btn = document.getElementById('pwa-install-btn');
+  if (btn) {
+    btn.onclick = function() {
+      if (!_deferredInstall) return;
+      _deferredInstall.prompt();
+      _deferredInstall.userChoice.then(function(choice) {
+        _deferredInstall = null;
+        var banner = document.getElementById('pwa-banner');
+        if (banner) banner.style.display = 'none';
+        if (choice.outcome === 'accepted') {
+          toast('QHSE MEGA installe sur votre telephone!');
+          localStorage.setItem('pwa-banner-dismissed', '1');
+        }
+      });
+    };
+  }
+});
+
+window.addEventListener('appinstalled', function() {
+  _deferredInstall = null;
+  var banner = document.getElementById('pwa-banner');
+  if (banner) banner.style.display = 'none';
+  toast('Application installee avec succes!');
+});
+
+// ── Push Notifications ───────────────────────────────────────────
+var VAPID_PUBLIC_KEY = '';  // Set your VAPID key here if using a push server
+                              // For basic local notifications, not needed
+
+function updatePushBtn() {
+  var dot = document.getElementById('push-dot');
+  var ico = document.getElementById('push-ico');
+  if (!dot) return;
+  if (_pushEnabled) {
+    dot.style.display = 'block';
+    if (ico) ico.style.color = '#22c55e';
+  } else {
+    dot.style.display = 'none';
+    if (ico) ico.style.color = '';
+  }
+}
+
+async function togPushNotif() {
+  if (!('Notification' in window)) {
+    toast('Notifications non supportees sur ce navigateur', true);
+    return;
+  }
+
+  if (_pushEnabled) {
+    // Disable notifications
+    if (_swReg && _swReg.pushManager) {
+      var sub = await _swReg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+    }
+    _pushEnabled = false;
+    updatePushBtn();
+    toast('Notifications desactivees');
+    return;
+  }
+
+  // Request permission
+  var permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    toast('Permission refusee - activez les notifications dans les reglages du navigateur', true);
+    return;
+  }
+
+  _pushEnabled = true;
+  updatePushBtn();
+  toast('Notifications activees!');
+
+  // Send a test notification
+  setTimeout(function() {
+    showLocalNotif(
+      'QHSE MEGA - Notifications activees',
+      'Vous recevrez des alertes pour les echeances, EPI expires, et incidents urgents.',
+      false
+    );
+  }, 1000);
+
+  // Schedule alert checks
+  scheduleAlertNotifications();
+}
+
+function showLocalNotif(title, body, urgent) {
+  if (Notification.permission !== 'granted') return;
+  if (_swReg) {
+    _swReg.showNotification(title, {
+      body: body,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'qhse-' + Date.now(),
+      requireInteraction: urgent || false,
+      actions: [{action:'open', title:'Ouvrir QHSE MEGA'}]
+    });
+  } else {
+    new Notification(title, {body: body, icon: './icon-192.png'});
+  }
+}
+
+function scheduleAlertNotifications() {
+  // Check alerts every 30 minutes and send notification if urgent items found
+  function checkAndNotify() {
+    if (!_pushEnabled || Notification.permission !== 'granted') return;
+    var alerts = computeAlerts();
+    if (!alerts.length) return;
+    var urgent = alerts.filter(function(a) { return a.days !== null && a.days <= 0; });
+    var soon = alerts.filter(function(a) { return a.days !== null && a.days > 0 && a.days <= 3; });
+    if (urgent.length > 0) {
+      showLocalNotif(
+        'QHSE MEGA - ' + urgent.length + ' alerte(s) urgente(s)!',
+        urgent.slice(0,3).map(function(a){return '• '+a.text;}).join('\n'),
+        true
+      );
+    } else if (soon.length > 0) {
+      showLocalNotif(
+        'QHSE MEGA - ' + soon.length + ' echeance(s) dans les 3 jours',
+        soon.slice(0,3).map(function(a){return '• '+a.text+' ('+a.days+'j)';}).join('\n'),
+        false
+      );
+    }
+  }
+
+  // Check immediately then every 30 min
+  setTimeout(checkAndNotify, 5000);
+  setInterval(checkAndNotify, 30 * 60 * 1000);
+}
+
+// ── Offline indicator ────────────────────────────────────────────
+function initOfflineDetect() {
+  function updateOnline() {
+    var isOnline = navigator.onLine;
+    var existing = document.getElementById('offline-bar');
+    if (!isOnline) {
+      if (!existing) {
+        var bar = document.createElement('div');
+        bar.id = 'offline-bar';
+        bar.style.cssText = 'position:fixed;top:50px;left:0;right:0;background:#f59e0b;color:#000;text-align:center;padding:6px;font-size:12px;font-weight:700;z-index:9000';
+        bar.textContent = '⚠ Hors ligne — Les donnees affichees peuvent ne pas etre a jour';
+        document.body.appendChild(bar);
+      }
+    } else {
+      if (existing) existing.remove();
+      // Back online: try to sync
+      if (_swReg && 'sync' in _swReg) {
+        _swReg.sync.register('qhse-sync').catch(function(){});
+      }
+    }
+  }
+  window.addEventListener('online', updateOnline);
+  window.addEventListener('offline', updateOnline);
+  updateOnline();
+}
+
 
 // ================================================================
 // UI HELPERS
