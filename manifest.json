@@ -1,14 +1,49 @@
 {
-  "name": "QHSE MEGA Cloud",
+  "name": "QHSE MEGA",
   "short_name": "QHSE MEGA",
-  "description": "Système de Management QHSE Cloud - Données synchronisées entre tous vos appareils",
-  "start_url": "/",
+  "description": "Système de Management QHSE - Incidents, Risques, Audits, EPI, Véhicules",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0b0d14",
   "theme_color": "#4f6ef7",
-  "orientation": "any",
   "lang": "fr",
+  "categories": ["business", "productivity"],
   "icons": [
-    {"src":"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%234f6ef7'/><path d='M96 20L36 48v48c0 44.4 30.72 85.92 72 96 41.28-10.08 72-51.6 72-96V48L96 20z' fill='white'/></svg>","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"}
-  ]
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Tableau de bord",
+      "short_name": "Dashboard",
+      "url": "./#dashboard",
+      "icons": [{"src": "icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Incidents",
+      "short_name": "Incidents",
+      "url": "./#incidents",
+      "icons": [{"src": "icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Alertes",
+      "short_name": "Alertes",
+      "url": "./#alerts",
+      "icons": [{"src": "icon-192.png", "sizes": "192x192"}]
+    }
+  ],
+  "prefer_related_applications": false
 }
