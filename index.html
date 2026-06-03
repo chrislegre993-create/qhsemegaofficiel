@@ -247,7 +247,14 @@ create trigger on_auth_user_created
 
 -- IMPORTANT: Dans Supabase > Authentication > Settings
 -- Desactivez "Enable email confirmations" pour tester sans confirmation email
--- Ou activez "Confirm email" seulement en production</pre>
+-- Ou activez "Confirm email" seulement en production
+
+-- ============================================================
+-- TABLES GESTION STOCK EPI (distributions + reapprovisionnements)
+-- ============================================================
+-- Ces tables sont automatiquement creees via la table records
+-- (module = "epi_dist" ou "epi_restock")
+-- Aucune action SQL supplementaire requise</pre>
       </div>
     </div>
 
@@ -716,7 +723,15 @@ var LANGS = {
     months:["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"],
     months_short:["Jan","Fev","Mar","Avr","Mai","Jun","Jul","Aou","Sep","Oct","Nov","Dec"],
     // Rapport
-    rapport_title:"Rapport Mensuel QHSE", manager_email:"Email du manager",
+    rapport_title:"Rapport Mensuel QHSE",
+    epi_stock:"Gestion Stock EPI",
+    epi_distribute:"Distribuer",
+    epi_restock:"Reapprovisionner",
+    epi_return:"Retour stock",
+    epi_history:"Historique distributions",
+    stock_initial:"Stock initial",
+    stock_available:"Disponible",
+    stock_distributed:"Distribue", manager_email:"Email du manager",
     manager_name:"Nom du manager", your_name:"Votre nom / Responsable QHSE",
     generate:"Generer le rapport", print_pdf:"Imprimer / PDF",
     send_email:"Envoyer par email", copy_text:"Copier texte",
@@ -763,7 +778,15 @@ var LANGS = {
     months:["January","February","March","April","May","June","July","August","September","October","November","December"],
     months_short:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
     // Rapport
-    rapport_title:"Monthly QHSE Report", manager_email:"Manager email",
+    rapport_title:"Monthly QHSE Report",
+    epi_stock:"PPE Stock Management",
+    epi_distribute:"Distribute",
+    epi_restock:"Restock",
+    epi_return:"Return to stock",
+    epi_history:"Distribution history",
+    stock_initial:"Initial stock",
+    stock_available:"Available",
+    stock_distributed:"Distributed", manager_email:"Manager email",
     manager_name:"Manager name", your_name:"Your name / QHSE Manager",
     generate:"Generate report", print_pdf:"Print / PDF",
     send_email:"Send by email", copy_text:"Copy text",
@@ -960,8 +983,8 @@ documents:{l:"Documents",i:"documents",
   c:[{k:"ref",l:"Ref."},{k:"title",l:"Titre"},{k:"type",l:"Type"},{k:"version",l:"Version"},{k:"author",l:"Auteur"},{k:"revision",l:"Revision"},{k:"status",l:"Statut",b:true}],
   f:function(){return[{k:"ref",l:"Reference"},{k:"title",l:"Titre"},{k:"type",l:"Type",o:["Politique QHSE","Procedure","Instruction","Mode operatoire","Formulaire","Enregistrement","Plan urgence","Rapport","Norme","Reglementation"]},{k:"version",l:"Version"},{k:"author",l:"Auteur"},{k:"approver",l:"Approbateur"},{k:"revision",l:"Date revision",t:"date"},{k:"nextRevision",l:"Prochaine revision",t:"date"},{k:"status",l:"Statut",o:["ACTIVE","PENDING","INACTIVE","OBSOLETE"]},{k:"description",l:"Description",ta:true}];}},
 ppe:{l:"EPI et Equipements",i:"ppe",
-  c:[{k:"ref",l:"Ref."},{k:"type",l:"Type EPI"},{k:"standard",l:"Norme"},{k:"site",l:"Site"},{k:"quantity",l:"Stock"},{k:"assignedTo",l:"Attribue a"},{k:"expiry",l:"Expiration",e:true},{k:"status",l:"Statut",b:true}],
-  f:function(){return[{k:"type",l:"Type d EPI"},{k:"standard",l:"Norme"},{k:"site",l:"Site",o:siteOpts()},{k:"quantity",l:"Quantite en stock",t:"number"},{k:"supplier",l:"Fournisseur"},{k:"purchaseDate",l:"Date achat",t:"date"},{k:"expiry",l:"Date expiration",t:"date"},{k:"renewalAlert",l:"Alerte (jours avant)",t:"number"},{k:"assignedTo",l:"Attribue a",o:empOpts()},{k:"status",l:"Statut",o:["VALIDE","A RENOUVELER","EXPIRE"]},{k:"notes",l:"Notes",ta:true}];}},
+  c:[{k:"ref",l:"Ref."},{k:"type",l:"Type EPI"},{k:"standard",l:"Norme"},{k:"site",l:"Site"},{k:"quantityInitial",l:"Stock initial"},{k:"quantityAvailable",l:"Dispo"},{k:"quantityDistributed",l:"Distribue"},{k:"expiry",l:"Expiration",e:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"type",l:"Type d EPI"},{k:"standard",l:"Norme (ex: EN397, EN361...)"},{k:"site",l:"Site",o:siteOpts()},{k:"quantityInitial",l:"Quantite initiale en stock",t:"number"},{k:"quantityAvailable",l:"Quantite disponible (recalculee auto)",t:"number"},{k:"supplier",l:"Fournisseur"},{k:"unitPrice",l:"Prix unitaire (FCFA)",t:"number"},{k:"purchaseDate",l:"Date d achat",t:"date"},{k:"expiry",l:"Date d expiration",t:"date"},{k:"renewalAlert",l:"Alerte renouvellement (jours avant)",t:"number"},{k:"minStock",l:"Seuil d alerte stock minimum",t:"number"},{k:"status",l:"Statut",o:["VALIDE","A RENOUVELER","EXPIRE"]},{k:"notes",l:"Notes",ta:true}];}},
 fire:{l:"Securite Incendie",i:"fire",
   c:[{k:"ref",l:"Ref."},{k:"type",l:"Type"},{k:"location",l:"Emplacement"},{k:"site",l:"Site"},{k:"lastCheck",l:"Derniere verif."},{k:"nextCheck",l:"Prochaine verif.",e:true},{k:"status",l:"Statut",b:true}],
   f:function(){return[{k:"ref",l:"Reference"},{k:"type",l:"Type",o:["Extincteur CO2 2kg","Extincteur CO2 5kg","Extincteur Poudre 6kg","Extincteur Poudre 9kg","Extincteur Eau 9L","RIA","Detecteur fumee","Alarme","Porte coupe-feu","Autre"]},{k:"location",l:"Emplacement"},{k:"site",l:"Site",o:siteOpts()},{k:"lastCheck",l:"Derniere verification",t:"date"},{k:"nextCheck",l:"Prochaine verification",t:"date"},{k:"technician",l:"Technicien"},{k:"status",l:"Statut",o:["OK","NON CONFORME","PARTIEL","EN ATTENTE"]},{k:"notes",l:"Notes",ta:true}];}},
@@ -982,6 +1005,7 @@ var NAV = [
   {k:"audits",l:"Audits",i:"audits",g:"Securite"},
   {k:"risks",l:"Risques / DUER",i:"risks",g:"Securite"},
   {k:"ppe",l:"EPI et Equipements",i:"ppe",g:"Securite"},
+  {k:"epistock",l:"EPI - Gestion Stock",i:"ppe",g:"Securite"},
   {k:"fire",l:"Securite Incendie",i:"fire",g:"Securite"},
   {k:"vehicles",l:"Vehicules",i:"vehicle",g:"Securite"},
   {k:"meetings",l:"Reunions Securite",i:"meeting",g:"Securite"},
@@ -1967,6 +1991,7 @@ async function goto(k) {
   put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">'+t("loading")+'</p></div>');
   try {
     if(k==="dashboard") await pgDash();
+    else if(k==="epistock") await pgEPIStock();
     else if(k==="sites") await pgSites();
     else if(k==="docsImport") await pgDocsImport();
     else if(k==="analytics") await pgAnalytics();
@@ -2074,6 +2099,20 @@ document.addEventListener("click",function(e){
   else if(act==="delsite")delSiteA(id);
   else if(act==="dldoc")downloadDoc(id);
   else if(act==="deldoc"){if(confirm(t("confirm_delete")))dDoc(id).then(function(){toast("Supprime");pgDocsImport();});}
+  else if(act==="epi-distribute"){
+    var avail=parseInt(btn.getAttribute("data-avail"))||0;
+    var epiType=btn.getAttribute("data-type")||"EPI";
+    openDistributeModal(id, epiType, avail);
+  }
+  else if(act==="epi-restock"){
+    var curInit=parseInt(btn.getAttribute("data-initial"))||0;
+    var epiType2=btn.getAttribute("data-type")||"EPI";
+    openRestockModal(id, epiType2, curInit);
+  }
+  else if(act==="epi-return"){
+    var epiId=btn.getAttribute("data-epi");
+    returnEPI(id, epiId);
+  }
   else if(act==="previewdoc")previewDoc(id);
   else if(act==="printdoc")printDoc(id);
 });
@@ -3889,6 +3928,441 @@ function initOfflineDetect() {
   window.addEventListener('offline', updateOnline);
   updateOnline();
 }
+
+// ================================================================
+// GESTION STOCK EPI - DISTRIBUTIONS ET TRAÇABILITE
+// ================================================================
+
+// Compute available qty for an EPI item from distributions
+async function epiGetStats(epiId) {
+  var allDist = await gRecs("epi_dist");
+  var dists = allDist.filter(function(d) { return d.epiId == epiId && d.status !== "RETOURNE"; });
+  var distributed = dists.reduce(function(s, d) { return s + (parseInt(d.qty)||0); }, 0);
+  return { distributed: distributed, distributions: dists };
+}
+
+// Recompute quantityAvailable for all EPI items (call after any distribution change)
+async function epiSyncStock() {
+  var ppeList = await gRecs("ppe");
+  var allDist = await gRecs("epi_dist");
+  for (var i = 0; i < ppeList.length; i++) {
+    var ppe = ppeList[i];
+    var dists = allDist.filter(function(d) { return d.epiId == ppe.id && d.status !== "RETOURNE"; });
+    var distributed = dists.reduce(function(s, d) { return s + (parseInt(d.qty)||0); }, 0);
+    var initial = parseInt(ppe.quantityInitial) || parseInt(ppe.quantity) || 0;
+    var available = Math.max(0, initial - distributed);
+    if (ppe.quantityAvailable != available || ppe.quantityDistributed != distributed) {
+      var updated = Object.assign({}, ppe, {
+        quantityInitial: initial,
+        quantityAvailable: available,
+        quantityDistributed: distributed
+      });
+      await sRec("ppe", updated, ppe.id);
+    }
+  }
+  cache["ppe"] = null;
+  cache["epi_dist"] = null;
+}
+
+// ── MAIN EPI STOCK PAGE ──────────────────────────────────────────
+async function pgEPIStock() {
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement stock EPI...</p></div>');
+
+  var ppeList = await gRecs("ppe");
+  var allDist = await gRecs("epi_dist");
+  var empList = await gRecs("employees");
+
+  // Recompute stocks in memory for display
+  var stockData = ppeList.map(function(ppe) {
+    var dists = allDist.filter(function(d) { return d.epiId == ppe.id && d.status !== "RETOURNE"; });
+    var distributed = dists.reduce(function(s, d) { return s + (parseInt(d.qty)||0); }, 0);
+    var initial = parseInt(ppe.quantityInitial) || parseInt(ppe.quantity) || 0;
+    var available = Math.max(0, initial - distributed);
+    var minStock = parseInt(ppe.minStock) || 0;
+    var lowStock = minStock > 0 && available <= minStock;
+    return Object.assign({}, ppe, {
+      _initial: initial,
+      _distributed: distributed,
+      _available: available,
+      _dists: dists,
+      _lowStock: lowStock,
+      _minStock: minStock
+    });
+  });
+
+  // Summary KPIs
+  var totalTypes = stockData.length;
+  var totalInitial = stockData.reduce(function(s,p){return s+p._initial;},0);
+  var totalDistributed = stockData.reduce(function(s,p){return s+p._distributed;},0);
+  var totalAvailable = stockData.reduce(function(s,p){return s+p._available;},0);
+  var lowStockCount = stockData.filter(function(p){return p._lowStock;}).length;
+  var expiredCount = stockData.filter(function(p){return p.status==="EXPIRE";}).length;
+
+  // Total value
+  var totalValue = stockData.reduce(function(s,p){
+    return s + (parseFloat(p.unitPrice)||0) * (p._initial||0);
+  }, 0);
+
+  // KPI bar
+  var kpiH = [
+    {l:"Types d EPI",v:totalTypes,c:"#4f6ef7"},
+    {l:"Stock initial",v:totalInitial,c:"#38bdf8"},
+    {l:"Distribues",v:totalDistributed,c:"#f59e0b"},
+    {l:"Disponibles",v:totalAvailable,c:"#22c55e"},
+    {l:"Stock bas",v:lowStockCount,c:lowStockCount>0?"#ef4444":"#22c55e"},
+    {l:"Expires",v:expiredCount,c:expiredCount>0?"#ef4444":"#22c55e"},
+  ].map(function(k) {
+    return '<div class="kpi" style="cursor:default"><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;margin:0 0 4px">'+k.l+'</p>'
+      +'<h2 style="font-size:24px;font-weight:900;margin:0;color:'+k.c+'">'+k.v+'</h2></div>';
+  }).join('');
+
+  // EPI cards with stock bars
+  var cardsH = stockData.length ? stockData.map(function(ppe) {
+    var pct = ppe._initial > 0 ? Math.round(ppe._available/ppe._initial*100) : 0;
+    var barC = pct>50?"#22c55e":pct>20?"#f59e0b":"#ef4444";
+    var expiryD = dl(ppe.expiry);
+    var expiryC = expiryD===null?"#6b6f96":expiryD<0?"#ef4444":expiryD<=30?"#f59e0b":"#22c55e";
+
+    // Recent distributions for this EPI
+    var recentDists = ppe._dists.slice(0,3).map(function(d) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #232640;font-size:11px">'
+        +'<span style="color:#e2e5f5">'+xe(d.empName||"--")+'</span>'
+        +'<div style="display:flex;gap:8px;align-items:center">'
+        +'<span style="color:#f59e0b;font-weight:700">x'+xe(String(d.qty))+'</span>'
+        +'<span style="color:#6b6f96">'+xe(d.date||"")+'</span>'
+        +'<span class="bdg" style="background:'+(d.status==="DISTRIBUE"?"#22c55e":"#f59e0b")+'22;color:'+(d.status==="DISTRIBUE"?"#22c55e":"#f59e0b")+';border:1px solid '+(d.status==="DISTRIBUE"?"#22c55e":"#f59e0b")+'44">'+xe(d.status)+'</span>'
+        +'<button data-action="epi-return" data-id="'+d.id+'" data-epi="'+ppe.id+'" style="background:#4f6ef718;border:1px solid #4f6ef730;border-radius:4px;padding:2px 6px;color:#4f6ef7;cursor:pointer;font-size:10px;font-family:inherit">Retour</button>'
+        +'</div></div>';
+    }).join('');
+
+    return '<div style="background:#131620;border:1px solid #232640;border-radius:14px;padding:16px;'+(ppe._lowStock?"border-color:#ef444460;":ppe.status==="EXPIRE"?"border-color:#ef444460;":"")+'">'
+      // Header
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
+      +'<div><p style="margin:0;font-size:14px;font-weight:700">'+xe(ppe.type||"EPI")+'</p>'
+      +'<p style="margin:2px 0 0;font-size:11px;color:#6b6f96">'+xe(ppe.standard||"")+(ppe.site?" · "+xe(ppe.site):"")+'</p></div>'
+      +'<div style="display:flex;gap:6px;align-items:center">'
+      +(ppe._lowStock?'<span class="bdg" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">Stock bas!</span>':'')
+      +bdg(ppe.status||"VALIDE")
+      +'</div></div>'
+
+      // Stock progress bar
+      +'<div style="margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
+      +'<span style="font-size:11px;color:#6b6f96">Disponible</span>'
+      +'<span style="font-size:12px;font-weight:700;color:'+barC+'">'+ppe._available+' / '+ppe._initial+'</span>'
+      +'</div>'
+      +'<div style="height:10px;background:#232640;border-radius:5px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+barC+';border-radius:5px;transition:width .5s ease"></div></div>'
+      +'</div>'
+
+      // Stats row
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'
+      +'<div style="background:#1a1d2b;border-radius:8px;padding:8px;text-align:center">'
+      +'<p style="margin:0;font-size:18px;font-weight:800;color:#38bdf8">'+ppe._initial+'</p>'
+      +'<p style="margin:0;font-size:9px;color:#6b6f96;text-transform:uppercase">Initial</p></div>'
+      +'<div style="background:#1a1d2b;border-radius:8px;padding:8px;text-align:center">'
+      +'<p style="margin:0;font-size:18px;font-weight:800;color:#f59e0b">'+ppe._distributed+'</p>'
+      +'<p style="margin:0;font-size:9px;color:#6b6f96;text-transform:uppercase">Distribue</p></div>'
+      +'<div style="background:#1a1d2b;border-radius:8px;padding:8px;text-align:center">'
+      +'<p style="margin:0;font-size:18px;font-weight:800;color:'+barC+'">'+ppe._available+'</p>'
+      +'<p style="margin:0;font-size:9px;color:#6b6f96;text-transform:uppercase">Dispo</p></div>'
+      +'</div>'
+
+      // Expiry + value
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:12px">'
+      +'<span style="color:#6b6f96">Expiration: <b style="color:'+expiryC+'">'+(ppe.expiry||"--")+'</b></span>'
+      +(ppe.unitPrice?'<span style="color:#6b6f96">Valeur: <b style="color:#e2e5f5">'+Math.round((parseFloat(ppe.unitPrice)||0)*ppe._initial).toLocaleString()+' FCFA</b></span>':'')
+      +'</div>'
+
+      // Recent distributions
+      +(ppe._dists.length
+        ?'<div style="margin-bottom:10px"><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:700;margin:0 0 6px">Distributions actuelles ('+ppe._dists.length+')</p>'
+        +recentDists
+        +(ppe._dists.length>3?'<p style="font-size:10px;color:#4f6ef7;margin:4px 0 0;cursor:pointer" onclick="pgDistHistory(\''+ppe.id+'\')">Voir tout ('+ppe._dists.length+')</p>':'')
+        +'</div>'
+        :'')
+
+      // Action buttons
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button data-action="epi-distribute" data-id="'+ppe.id+'" data-type="'+xe(ppe.type)+'" data-avail="'+ppe._available+'" style="background:linear-gradient(135deg,#4f6ef7,#7c5cf6);border:none;border-radius:8px;padding:7px 14px;color:#fff;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;flex:1">+ Distribuer</button>'
+      +'<button data-action="epi-restock" data-id="'+ppe.id+'" data-type="'+xe(ppe.type)+'" data-initial="'+ppe._initial+'" style="background:#22c55e18;border:1px solid #22c55e40;border-radius:8px;padding:7px 12px;color:#22c55e;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit">Réappro.</button>'
+      +'<button data-action="edit" data-mk="ppe" data-id="'+ppe.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:7px 10px;cursor:pointer;color:#6b6f96;display:flex;align-items:center">'+ic("edit",14)+'</button>'
+      +'</div></div>';
+  }).join('') : '<p style="color:#6b6f96;text-align:center;padding:40px">Aucun EPI enregistre — Ajoutez-en dans le module EPI</p>';
+
+  // Recent distributions across all EPI (last 10)
+  var recentAllDist = allDist.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,10);
+  var recentDistH = recentAllDist.length ? recentAllDist.map(function(d) {
+    var ppe = stockData.find(function(p){return p.id==d.epiId;});
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #232640">'
+      +'<div style="display:flex;gap:10px;align-items:center">'
+      +'<div style="width:36px;height:36px;background:#4f6ef718;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+ic("ppe",16)+'</div>'
+      +'<div><p style="margin:0;font-size:12px;font-weight:600">'+xe(d.empName||"--")+'</p>'
+      +'<p style="margin:0;font-size:11px;color:#6b6f96">'+xe(ppe?ppe.type:d.epiType||"")+'</p></div></div>'
+      +'<div style="text-align:right">'
+      +'<p style="margin:0;font-size:12px;font-weight:700;color:#f59e0b">x'+xe(String(d.qty))+'</p>'
+      +'<p style="margin:0;font-size:10px;color:#6b6f96">'+xe(d.date||"")+'</p></div></div>';
+  }).join('') : '<p style="color:#6b6f96;font-size:12px">Aucune distribution</p>';
+
+  put('<div class="fi">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:20px">'
+    +'<div><h1 style="font-size:19px;font-weight:800;margin:0">Gestion Stock EPI</h1>'
+    +'<p style="color:#6b6f96;font-size:12px;margin:3px 0 0">Stock · Distributions · Traçabilité</p></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button onclick="goto(\'ppe\')" class="btn bg0 bsm">'+ic("ppe",13)+' Catalogue EPI</button>'
+    +'<button onclick="pgDistHistory(null)" class="btn bg0 bsm">Historique</button>'
+    +'<button onclick="epiSyncStock().then(function(){cache={};pgEPIStock();})" class="btn bp bsm">'+ic("check",13)+' Sync</button>'
+    +'</div></div>'
+    +'<div class="gkpi" style="margin-bottom:20px">'+kpiH+'</div>'
+    +(lowStockCount>0||expiredCount>0
+      ?'<div class="aw" style="margin-bottom:14px">'+ic("warn",14)
+        +' '+(lowStockCount>0?lowStockCount+' EPI en stock bas — ':''  )
+        +(expiredCount>0?expiredCount+' EPI expires':'')
+        +'</div>':''
+    )
+    +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">'
+    +'<div><h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Stock par type d\'EPI</h3>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'+cardsH+'</div></div>'
+    +'<div><div class="card" style="position:sticky;top:14px">'
+    +'<h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Distributions récentes</h3>'
+    +recentDistH
+    +'</div></div></div></div>');
+}
+
+// ── DISTRIBUTE MODAL ─────────────────────────────────────────────
+async function openDistributeModal(epiId, epiType, available) {
+  var empList = await gRecs("employees");
+  var empOpts2 = empList.map(function(e){
+    return '<option value="'+xe(String(e.id))+'" data-name="'+xe(e.fullName||"")+'">'+xe(e.fullName||"--")+(e.position?" — "+xe(e.position):"")+'</option>';
+  }).join('');
+
+  document.getElementById("mtit").textContent = "Distribuer — " + epiType;
+  document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer la distribution";
+  document.getElementById("msave").onclick = function(){ saveDistribution(epiId, epiType, available); };
+  document.getElementById("mmsg").style.display = "none";
+  document.getElementById("mbtns").style.display = "flex";
+
+  document.getElementById("mflds").innerHTML =
+    '<div style="grid-column:1/-1">'
+    +'<div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#4f6ef7">'
+    +'<strong>'+xe(epiType)+'</strong> — Stock disponible: <strong style="font-size:16px">'+available+'</strong> unité(s)'
+    +'</div>'
+    +'<div class="g2">'
+    +'<div class="f"><label>Employé *</label>'
+    +'<select id="dist-emp"><option value="">-- Sélectionner --</option>'+empOpts2+'</select></div>'
+    +'<div class="f"><label>Quantité *</label>'
+    +'<input id="dist-qty" type="number" min="1" max="'+available+'" value="1" style="font-size:18px;font-weight:700;text-align:center"/></div>'
+    +'<div class="f"><label>Date de distribution</label>'
+    +'<input id="dist-date" type="date" value="'+new Date().toISOString().split("T")[0]+'"/></div>'
+    +'<div class="f"><label>Retour prévu (optionnel)</label>'
+    +'<input id="dist-return" type="date"/></div>'
+    +'</div>'
+    +'<div class="f"><label>Motif / Poste / Chantier</label>'
+    +'<input id="dist-reason" type="text" placeholder="Ex: Chantier Plateau, Poste soudeur, Formation..."/></div>'
+    +'<div class="f"><label>Notes</label>'
+    +'<textarea id="dist-notes" rows="2" placeholder="Observations, conditions de port..."></textarea></div>'
+    +'</div>';
+  showMod();
+}
+
+async function saveDistribution(epiId, epiType, available) {
+  var msg = document.getElementById("mmsg");
+  var empSel = document.getElementById("dist-emp");
+  var qty = parseInt(document.getElementById("dist-qty").value) || 0;
+  var date = document.getElementById("dist-date").value;
+  var returnDate = document.getElementById("dist-return").value;
+  var reason = document.getElementById("dist-reason").value.trim();
+  var notes = document.getElementById("dist-notes").value.trim();
+  var empId = empSel.value;
+  var empName = empSel.options[empSel.selectedIndex] ? empSel.options[empSel.selectedIndex].getAttribute("data-name") : "";
+
+  if (!empId) { msg.className="aerr"; msg.textContent="Sélectionnez un employé."; msg.style.display="block"; return; }
+  if (qty < 1) { msg.className="aerr"; msg.textContent="Quantité doit être ≥ 1."; msg.style.display="block"; return; }
+  if (qty > available) { msg.className="aerr"; msg.textContent="Stock insuffisant ("+available+" disponible)."; msg.style.display="block"; return; }
+
+  var btn = document.getElementById("msave");
+  btn.disabled = true; btn.textContent = "Enregistrement...";
+
+  var dist = {
+    epiId: String(epiId), epiType: epiType,
+    empId: empId, empName: empName,
+    qty: qty, date: date, returnDate: returnDate || null,
+    reason: reason, notes: notes,
+    status: "DISTRIBUE"
+  };
+
+  var r = await sRec("epi_dist", dist, null);
+  if (r && r.err) {
+    btn.disabled = false; btn.textContent = "Enregistrer la distribution";
+    msg.className="aerr"; msg.textContent="Erreur: "+r.err; msg.style.display="block";
+    return;
+  }
+
+  // Update EPI available qty
+  var ppeList = await gRecs("ppe");
+  var ppe = ppeList.find(function(p){return p.id==epiId;});
+  if (ppe) {
+    var allDist = await gRecs("epi_dist");
+    var dists = allDist.filter(function(d){return d.epiId==epiId && d.status!=="RETOURNE";});
+    var distributed = dists.reduce(function(s,d){return s+(parseInt(d.qty)||0);},0);
+    var initial = parseInt(ppe.quantityInitial)||parseInt(ppe.quantity)||0;
+    await sRec("ppe", Object.assign({}, ppe, {
+      quantityInitial: initial,
+      quantityDistributed: distributed,
+      quantityAvailable: Math.max(0, initial - distributed)
+    }), epiId);
+    cache["ppe"] = null;
+  }
+  cache["epi_dist"] = null;
+
+  closeMod();
+  toast(qty+" x "+epiType+" distribué(s) à "+empName);
+  await pgEPIStock();
+}
+
+// ── RESTOCK MODAL ────────────────────────────────────────────────
+function openRestockModal(epiId, epiType, currentInitial) {
+  document.getElementById("mtit").textContent = "Réapprovisionnement — " + epiType;
+  document.getElementById("msave").innerHTML = ic("check",13) + " Confirmer le réapprovisionnement";
+  document.getElementById("msave").onclick = function(){ saveRestock(epiId, epiType, currentInitial); };
+  document.getElementById("mmsg").style.display = "none";
+  document.getElementById("mbtns").style.display = "flex";
+
+  document.getElementById("mflds").innerHTML =
+    '<div style="grid-column:1/-1">'
+    +'<div style="background:#22c55e12;border:1px solid #22c55e30;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#22c55e">'
+    +'Réappro pour: <strong>'+xe(epiType)+'</strong> — Stock actuel: <strong>'+currentInitial+'</strong>'
+    +'</div>'
+    +'<div class="g2">'
+    +'<div class="f"><label>Quantité reçue *</label>'
+    +'<input id="restock-qty" type="number" min="1" value="10" style="font-size:20px;font-weight:700;text-align:center"/></div>'
+    +'<div class="f"><label>Date de réception</label>'
+    +'<input id="restock-date" type="date" value="'+new Date().toISOString().split("T")[0]+'"/></div>'
+    +'<div class="f"><label>Fournisseur</label>'
+    +'<input id="restock-supplier" type="text" placeholder="Ex: TOTAL Safety, Sodirco..."/></div>'
+    +'<div class="f"><label>N° de bon de livraison</label>'
+    +'<input id="restock-bl" type="text" placeholder="Ex: BL-2025-0042"/></div>'
+    +'</div>'
+    +'<div class="f"><label>Notes</label>'
+    +'<textarea id="restock-notes" rows="2" placeholder="Informations complémentaires..."></textarea></div>'
+    +'</div>';
+  showMod();
+}
+
+async function saveRestock(epiId, epiType, currentInitial) {
+  var msg = document.getElementById("mmsg");
+  var qty = parseInt(document.getElementById("restock-qty").value) || 0;
+  if (qty < 1) { msg.className="aerr"; msg.textContent="Quantité doit être ≥ 1."; msg.style.display="block"; return; }
+
+  var btn = document.getElementById("msave");
+  btn.disabled = true; btn.textContent = "Enregistrement...";
+
+  // Log the restock as a record
+  await sRec("epi_restock", {
+    epiId: String(epiId), epiType: epiType,
+    qty: qty, date: document.getElementById("restock-date").value,
+    supplier: document.getElementById("restock-supplier").value,
+    bl: document.getElementById("restock-bl").value,
+    notes: document.getElementById("restock-notes").value,
+    status: "RECU"
+  }, null);
+
+  // Update EPI initial stock
+  var ppeList = await gRecs("ppe");
+  var ppe = ppeList.find(function(p){return p.id==epiId;});
+  if (ppe) {
+    var newInitial = currentInitial + qty;
+    var allDist = await gRecs("epi_dist");
+    var dists = allDist.filter(function(d){return d.epiId==epiId&&d.status!=="RETOURNE";});
+    var distributed = dists.reduce(function(s,d){return s+(parseInt(d.qty)||0);},0);
+    await sRec("ppe", Object.assign({}, ppe, {
+      quantityInitial: newInitial,
+      quantityDistributed: distributed,
+      quantityAvailable: Math.max(0, newInitial - distributed)
+    }), epiId);
+    cache["ppe"] = null;
+    cache["epi_restock"] = null;
+    cache["epi_dist"] = null;
+  }
+
+  closeMod();
+  toast(qty+" x "+epiType+" réapprovisionné! Nouveau stock: "+(currentInitial+qty));
+  await pgEPIStock();
+}
+
+// ── RETURN EPI ───────────────────────────────────────────────────
+async function returnEPI(distId, epiId) {
+  if (!confirm("Marquer cet EPI comme retourné au stock?")) return;
+
+  var allDist = await gRecs("epi_dist");
+  var dist = allDist.find(function(d){return d.id==distId;});
+  if (!dist) { toast("Distribution introuvable", true); return; }
+
+  await sRec("epi_dist", Object.assign({}, dist, {
+    status: "RETOURNE",
+    returnDate: new Date().toISOString().split("T")[0]
+  }), distId);
+
+  // Update EPI stock
+  var ppeList = await gRecs("ppe");
+  var ppe = ppeList.find(function(p){return p.id==epiId||p.id==dist.epiId;});
+  if (ppe) {
+    cache["epi_dist"] = null;
+    var allDist2 = await gRecs("epi_dist");
+    var dists = allDist2.filter(function(d){return d.epiId==ppe.id&&d.status!=="RETOURNE";});
+    var distributed = dists.reduce(function(s,d){return s+(parseInt(d.qty)||0);},0);
+    var initial = parseInt(ppe.quantityInitial)||parseInt(ppe.quantity)||0;
+    await sRec("ppe", Object.assign({}, ppe, {
+      quantityDistributed: distributed,
+      quantityAvailable: Math.max(0, initial - distributed)
+    }), ppe.id);
+    cache["ppe"] = null;
+  }
+  cache["epi_dist"] = null;
+
+  toast("EPI retourné au stock!");
+  await pgEPIStock();
+}
+
+// ── DISTRIBUTION HISTORY ─────────────────────────────────────────
+async function pgDistHistory(epiId) {
+  var allDist = await gRecs("epi_dist");
+  var ppeList = await gRecs("ppe");
+  var dists = epiId
+    ? allDist.filter(function(d){return d.epiId==epiId;})
+    : allDist;
+
+  dists = dists.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+
+  document.getElementById("mtit").textContent = epiId
+    ? "Historique — " + ((ppeList.find(function(p){return p.id==epiId;})||{}).type||"EPI")
+    : "Historique complet des distributions";
+  document.getElementById("msave").style.display = "none";
+  document.getElementById("mbtns").innerHTML = '<button onclick="closeMod()" class="btn bg0">Fermer</button>';
+  document.getElementById("mmsg").style.display = "none";
+
+  var rows = dists.length ? dists.map(function(d) {
+    var ppe = ppeList.find(function(p){return p.id==d.epiId;});
+    var sc = d.status==="DISTRIBUE"?"#22c55e":d.status==="RETOURNE"?"#6b7280":"#f59e0b";
+    return '<tr style="border-bottom:1px solid #232640">'
+      +'<td style="padding:8px 10px;font-size:12px;font-weight:600">'+xe(d.empName||"--")+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px">'+xe(ppe?ppe.type:d.epiType||"--")+'</td>'
+      +'<td style="padding:8px 10px;text-align:center"><span style="font-size:14px;font-weight:700;color:#f59e0b">x'+xe(String(d.qty))+'</span></td>'
+      +'<td style="padding:8px 10px;font-size:11px;color:#6b6f96">'+xe(d.date||"--")+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;color:#6b6f96">'+xe(d.returnDate||"—")+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;color:#6b6f96">'+xe(d.reason||"")+'</td>'
+      +'<td style="padding:8px 10px"><span class="bdg" style="background:'+sc+'22;color:'+sc+';border:1px solid '+sc+'44">'+xe(d.status)+'</span></td>'
+      +'</tr>';
+  }).join('') : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#6b6f96">Aucune distribution</td></tr>';
+
+  document.getElementById("mflds").innerHTML =
+    '<div style="grid-column:1/-1;overflow-x:auto">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="background:#1a1d2b"><th style="padding:8px 10px;text-align:left;color:#6b6f96">Employé</th><th style="padding:8px 10px;text-align:left;color:#6b6f96">EPI</th><th style="padding:8px 10px;text-align:center;color:#6b6f96">Qté</th><th style="padding:8px 10px;text-align:left;color:#6b6f96">Date</th><th style="padding:8px 10px;text-align:left;color:#6b6f96">Retour</th><th style="padding:8px 10px;text-align:left;color:#6b6f96">Motif</th><th style="padding:8px 10px;text-align:left;color:#6b6f96">Statut</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>';
+  showMod();
+}
+
 
 // ================================================================
 // UI HELPERS
