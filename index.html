@@ -2049,8 +2049,18 @@ function bldMF(mk,data) {
     return '<div class="f" style="'+sp+'"><label>'+f.l+'</label><input type="'+(f.t||"text")+'" data-k="'+f.k+'" value="'+xe(v)+'"/></div>';
   }).join("");
 }
-function showMod(){document.getElementById("mbg").className="mbg on";}
-function closeMod(){document.getElementById("mbg").className="mbg";S.mkey=null;S.eid=null;}
+function showMod(){
+  document.getElementById("mbg").className="mbg on";
+  // Reset save button state every time modal opens
+  var btn=document.getElementById("msave");
+  if(btn){btn.disabled=false;}
+}
+function closeMod(){
+  document.getElementById("mbg").className="mbg";
+  S.mkey=null; S.eid=null;
+  var btn=document.getElementById("msave");
+  if(btn){btn.disabled=false; btn.style.opacity="1"; btn.style.cursor="pointer";}
+}
 async function saveMod() {
   var mk=S.mkey;if(!mk||mk.startsWith("__"))return;
   var btn=document.getElementById("msave");btn.disabled=true;btn.innerHTML=ic("settings",13)+" ...";
@@ -4215,8 +4225,10 @@ async function saveDistribution(epiId, epiType, available) {
   }
   cache["epi_dist"] = null;
 
+  btn.disabled = false;
+  btn.innerHTML = ic("check",13) + " Enregistrer la distribution";
   closeMod();
-  toast(qty+" x "+epiType+" distribué(s) à "+empName);
+  toast(qty+" x "+epiType+" distribue(s) a "+empName);
   await pgEPIStock();
 }
 
@@ -4285,8 +4297,10 @@ async function saveRestock(epiId, epiType, currentInitial) {
     cache["epi_dist"] = null;
   }
 
+  btn.disabled = false;
+  btn.innerHTML = ic("check",13) + " Confirmer le reapprovisionnement";
   closeMod();
-  toast(qty+" x "+epiType+" réapprovisionné! Nouveau stock: "+(currentInitial+qty));
+  toast(qty+" x "+epiType+" reapprovisionne! Nouveau stock: "+(currentInitial+qty));
   await pgEPIStock();
 }
 
