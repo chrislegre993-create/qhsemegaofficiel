@@ -430,8 +430,8 @@ create trigger on_auth_user_created
     <div id="mmsg" style="display:none;margin-bottom:10px"></div>
     <div id="mflds" class="g2"></div>
     <div id="mbtns" style="display:flex;gap:9px;justify-content:flex-end;margin-top:10px">
-      <button onclick="closeMod()" class="btn bg0">'+t("cancel")+'</button>
-      <button id="msave" class="btn bp">Enregistrer</button>
+      <button onclick="closeMod()" id="mcancel" class="btn bg0">'+t("cancel")+'</button>
+      <button onclick="saveCurrent()" id="msave" class="btn bp">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -682,7 +682,7 @@ function syncEnd(ok) {
 // ================================================================
 // STATE
 // ================================================================
-var S = {user:null, pg:"dashboard", search:"", dark:true, aiOpen:false, aiMsgs:[], aiLoad:false, notif:false, mkey:null, eid:null, sites:[], gsOpen:false};
+var S = {user:null, pg:"dashboard", search:"", dark:true, aiOpen:false, aiMsgs:[], aiLoad:false, notif:false, mkey:null, eid:null, sites:[], gsOpen:false, _saveAction:null};
 
 // ================================================================
 // LANGUAGE SYSTEM
@@ -992,8 +992,14 @@ vehicles:{l:"Vehicules et Conducteurs",i:"vehicle",
   c:[{k:"ref",l:"Ref."},{k:"plate",l:"Immatriculation"},{k:"model",l:"Vehicule"},{k:"driver",l:"Conducteur"},{k:"site",l:"Site"},{k:"licenseExpiry",l:"Permis",e:true},{k:"insuranceExpiry",l:"Assurance",e:true},{k:"technicalExpiry",l:"Visite tech.",e:true},{k:"oilChangeExpiry",l:"Vidange",e:true},{k:"status",l:"Statut",b:true}],
   f:function(){return[{k:"plate",l:"N Immatriculation"},{k:"model",l:"Marque et modele"},{k:"year",l:"Annee"},{k:"fuel",l:"Carburant",o:["Essence","Diesel","Electrique","Hybride","GPL"]},{k:"driver",l:"Conducteur",o:empOpts()},{k:"site",l:"Site",o:siteOpts()},{k:"mileage",l:"Kilometrage",t:"number"},{k:"licenseExpiry",l:"Expiry Permis",t:"date"},{k:"licenseCategory",l:"Categorie permis"},{k:"insuranceExpiry",l:"Expiry Assurance",t:"date"},{k:"insuranceCompany",l:"Assureur"},{k:"transportCardExpiry",l:"Expiry Carte transport",t:"date"},{k:"parkingCardExpiry",l:"Expiry Stationnement",t:"date"},{k:"technicalExpiry",l:"Expiry Visite technique",t:"date"},{k:"oilChangeExpiry",l:"Expiry Vidange",t:"date"},{k:"status",l:"Statut",o:["ACTIVE","EN PANNE","MAINTENANCE","IMMOBILISE","CEDE"]},{k:"notes",l:"Notes",ta:true}];}},
 employees:{l:"Employes",i:"employee",
-  c:[{k:"ref",l:"Ref."},{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site"},{k:"bloodGroup",l:"Gr. sanguin"},{k:"nextMedical",l:"Prochaine visite",e:true},{k:"status",l:"Statut",b:true}],
-  f:function(){return[{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site",o:siteOpts()},{k:"phone",l:"Telephone"},{k:"email",l:"Email",t:"email"},{k:"hireDate",l:"Date embauche",t:"date"},{k:"contractType",l:"Contrat",o:["CDI","CDD","Interimaire","Stagiaire","Sous-traitant"]},{k:"emergencyContact",l:"Contact urgence"},{k:"emergencyPhone",l:"Tel urgence"},{k:"bloodGroup",l:"Groupe sanguin",o:["A+","A-","B+","B-","AB+","AB-","O+","O-"]},{k:"lastMedical",l:"Derniere visite medicale",t:"date"},{k:"nextMedical",l:"Prochaine visite",t:"date"},{k:"medicalAlert",l:"Alerte visite (jours avant)",t:"number"},{k:"medicalRestrictions",l:"Restrictions"},{k:"assignedPPE",l:"EPI attribues (refs)",ta:true},{k:"formationsList",l:"Formations",ta:true},{k:"status",l:"Statut",o:["ACTIVE","INACTIVE","EN CONGE","EN FORMATION","SUSPENDU"]},{k:"notes",l:"Notes",ta:true}];}},
+  c:[{k:"ref",l:"Ref."},{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site"},{k:"bloodGroup",l:"Gr. sanguin"},{k:"shirtSize",l:"Taille"},{k:"shoeSize",l:"Pointure"},{k:"nextMedical",l:"Prochaine visite",e:true},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site",o:siteOpts()},{k:"phone",l:"Telephone"},{k:"email",l:"Email",t:"email"},{k:"hireDate",l:"Date embauche",t:"date"},{k:"contractType",l:"Contrat",o:["CDI","CDD","Interimaire","Stagiaire","Sous-traitant"]},{k:"emergencyContact",l:"Contact urgence"},{k:"emergencyPhone",l:"Tel urgence"},{k:"bloodGroup",l:"Groupe sanguin",o:["A+","A-","B+","B-","AB+","AB-","O+","O-"]},
+    {k:"shirtSize",l:"Taille chemise / veste",o:["XS","S","M","L","XL","XXL","3XL","4XL","Sur mesure"]},
+    {k:"pantsSize",l:"Taille pantalon (tour de taille cm)",t:"number"},
+    {k:"shoeSize",l:"Pointure chaussures",o:["36","37","38","39","40","41","42","43","44","45","46","47","48"]},
+    {k:"helmetSize",l:"Taille casque",o:["S (53-55cm)","M (55-57cm)","L (57-59cm)","XL (59-61cm)","XXL (61-63cm)","Reglable"]},
+    {k:"glovesSize",l:"Taille gants",o:["XS","S","M","L","XL","XXL"]},
+    {k:"lastMedical",l:"Derniere visite medicale",t:"date"},{k:"nextMedical",l:"Prochaine visite",t:"date"},{k:"medicalAlert",l:"Alerte visite (jours avant)",t:"number"},{k:"medicalRestrictions",l:"Restrictions"},{k:"assignedPPE",l:"EPI attribues (refs)",ta:true},{k:"formationsList",l:"Formations",ta:true},{k:"status",l:"Statut",o:["ACTIVE","INACTIVE","EN CONGE","EN FORMATION","SUSPENDU"]},{k:"notes",l:"Notes",ta:true}];}},
 meetings:{l:"Reunions Securite",i:"meeting",
   c:[{k:"ref",l:"Ref."},{k:"title",l:"Titre"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"chairman",l:"Animateur"},{k:"attendeesCount",l:"Participants"},{k:"status",l:"Statut",b:true}],
   f:function(){return[{k:"title",l:"Titre"},{k:"site",l:"Site",o:siteOpts()},{k:"date",l:"Date",t:"date"},{k:"time",l:"Heure",t:"time"},{k:"duration",l:"Duree (min)",t:"number"},{k:"chairman",l:"Animateur",o:empOpts()},{k:"location",l:"Lieu"},{k:"attendeesCount",l:"Nb participants",t:"number"},{k:"attendeesList",l:"Liste participants",ta:true},{k:"topics",l:"Sujets abordes",ta:true},{k:"decisions",l:"Decisions et actions",ta:true},{k:"nextMeeting",l:"Prochaine reunion",t:"date"},{k:"status",l:"Statut",o:["PLANNED","COMPLETED","CANCELLED"]}];}},
@@ -1014,6 +1020,7 @@ var NAV = [
   {k:"documents",l:"Documents",i:"documents",g:"Qualite"},
   {k:"docsImport",l:"Import PDF",i:"pdf",g:"Qualite"},
   {k:"employees",l:"Employes",i:"employee",g:"RH"},
+  {k:"emptsizes",l:"Tailles EPI Employes",i:"employee",g:"RH"},
   {k:"training",l:"Formations",i:"training",g:"RH"},
   {k:"environment",l:"Environnement",i:"environment"},
   {k:"analytics",l:"Analytique et KPIs",i:"analytics",g:"Rapports"},
@@ -1887,7 +1894,7 @@ function oSite(id) {
   S.mkey="__site__";S.eid=id||null;
   document.getElementById("mtit").textContent=id?"Modifier le site":"Ajouter un site";
   document.getElementById("msave").innerHTML=ic("check",13)+" "+(id?"Enregistrer":"Ajouter");
-  document.getElementById("msave").onclick=saveSiteA;
+  S._saveAction=saveSiteA;
   document.getElementById("mmsg").style.display="none";
   document.getElementById("mbtns").style.display="flex";
   var types=["Siege social","Bureau","Usine / Atelier","Chantier BTP","Entrepot / Depot","Exploitation agricole","Mine / Carriere","Zone industrielle","Port / Terminal","Aeroport","Site petrolier","Autre"];
@@ -1997,6 +2004,7 @@ async function goto(k) {
     else if(k==="analytics") await pgAnalytics();
     else if(k==="rapport") await pgRapport();
     else if(k==="outils") pgOutils();
+    else if(k==="emptsizes") await pgEmpSizes();
     else if(k==="settings") pgSettings();
     else if(k==="profile") pgProfile();
     else if(M[k]) await pgCRUD(k);
@@ -2024,7 +2032,7 @@ async function oCreate(mk) {
   S.mkey=mk;S.eid=null;
   document.getElementById("mtit").textContent="Nouveau - "+M[mk].l;
   document.getElementById("msave").innerHTML=ic("check",13)+" Creer";
-  document.getElementById("msave").onclick=saveMod;
+  S._saveAction=saveMod;
   document.getElementById("mmsg").style.display="none";
   document.getElementById("mbtns").style.display="flex";
   bldMF(mk,{});showMod();
@@ -2035,7 +2043,7 @@ async function oEdit(mk,id) {
   S.mkey=mk;S.eid=id;
   document.getElementById("mtit").textContent="Modifier - "+M[mk].l;
   document.getElementById("msave").innerHTML=ic("check",13)+" Enregistrer";
-  document.getElementById("msave").onclick=saveMod;
+  S._saveAction=saveMod;
   document.getElementById("mmsg").style.display="none";
   document.getElementById("mbtns").style.display="flex";
   bldMF(mk,row);showMod();
@@ -2051,15 +2059,22 @@ function bldMF(mk,data) {
 }
 function showMod(){
   document.getElementById("mbg").className="mbg on";
-  // Reset save button state every time modal opens
-  var btn=document.getElementById("msave");
-  if(btn){btn.disabled=false;}
+  var msave=document.getElementById("msave");
+  if(msave){msave.disabled=false;msave.style.display="";}
+  var mcancel=document.getElementById("mcancel");
+  if(mcancel)mcancel.style.display="";
 }
+function saveCurrent(){if(S._saveAction)S._saveAction();}
+
 function closeMod(){
   document.getElementById("mbg").className="mbg";
-  S.mkey=null; S.eid=null;
-  var btn=document.getElementById("msave");
-  if(btn){btn.disabled=false; btn.style.opacity="1"; btn.style.cursor="pointer";}
+  S.mkey=null; S.eid=null; S._saveAction=null;
+  var msave=document.getElementById("msave");
+  if(msave){msave.disabled=false;msave.style.display="";msave.innerHTML=ic("check",13)+" Enregistrer";}
+  var mcancel=document.getElementById("mcancel");
+  if(mcancel){mcancel.style.display="";mcancel.textContent="";}
+  var mmsg=document.getElementById("mmsg");
+  if(mmsg)mmsg.style.display="none";
 }
 async function saveMod() {
   var mk=S.mkey;if(!mk||mk.startsWith("__"))return;
@@ -3064,7 +3079,7 @@ function openTool(id) {
 function pgIshikawa() {
   document.getElementById("mtit").textContent = "Diagramme Ishikawa — Analyse Causes Racines";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Actions";
-  document.getElementById("msave").onclick = saveIshikawa;
+  S._saveAction=saveIshikawa;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3137,7 +3152,7 @@ function saveIshikawa() {
 function pg5Pourquoi() {
   document.getElementById("mtit").textContent = "Methode des 5 Pourquoi";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Actions";
-  document.getElementById("msave").onclick = save5P;
+  S._saveAction=save5P;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3182,7 +3197,7 @@ function save5P() {
 function pgAMDEC() {
   document.getElementById("mtit").textContent = "AMDEC — Analyse des Modes de Defaillance";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Risques";
-  document.getElementById("msave").onclick = saveAMDEC;
+  S._saveAction=saveAMDEC;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3259,7 +3274,7 @@ function saveAMDEC() {
 function pgPDCA() {
   document.getElementById("mtit").textContent = "Roue PDCA — Plan-Do-Check-Act";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Actions";
-  document.getElementById("msave").onclick = savePDCA;
+  S._saveAction=savePDCA;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3314,7 +3329,7 @@ function savePDCA() {
 function pgSWOT() {
   document.getElementById("mtit").textContent = "Analyse SWOT QHSE";
   document.getElementById("msave").innerHTML = ic("check",13) + " Sauvegarder dans Documents";
-  document.getElementById("msave").onclick = saveSWOT;
+  S._saveAction=saveSWOT;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3360,7 +3375,7 @@ function saveSWOT() {
 function pg8D() {
   document.getElementById("mtit").textContent = "Rapport 8D — 8 Disciplines";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer";
-  document.getElementById("msave").onclick = save8D;
+  S._saveAction=save8D;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3410,7 +3425,7 @@ function save8D() {
 function pgPareto() {
   document.getElementById("mtit").textContent = "Analyse de Pareto 80/20";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Actions";
-  document.getElementById("msave").onclick = savePareto;
+  S._saveAction=savePareto;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3513,7 +3528,7 @@ function savePareto() {
 function pgBowTie() {
   document.getElementById("mtit").textContent = "Analyse Noeud Papillon (Bow-Tie)";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Risques";
-  document.getElementById("msave").onclick = saveBowTie;
+  S._saveAction=saveBowTie;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3560,7 +3575,7 @@ function saveBowTie() {
 function pgLMRA() {
   document.getElementById("mtit").textContent = "LMRA — Evaluation Risques Derniere Minute";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer";
-  document.getElementById("msave").onclick = saveLMRA;
+  S._saveAction=saveLMRA;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -3628,7 +3643,7 @@ function saveLMRA() {
 function pgHIRA() {
   document.getElementById("mtit").textContent = "HIRA — Identification des Dangers et Evaluation des Risques";
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer dans Risques";
-  document.getElementById("msave").onclick = saveHIRA;
+  S._saveAction=saveHIRA;
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -4148,7 +4163,7 @@ async function openDistributeModal(epiId, epiType, available) {
 
   document.getElementById("mtit").textContent = "Distribuer — " + epiType;
   document.getElementById("msave").innerHTML = ic("check",13) + " Enregistrer la distribution";
-  document.getElementById("msave").onclick = function(){ saveDistribution(epiId, epiType, available); };
+  S._saveAction=function(){ saveDistribution(epiId, epiType, available); };
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -4227,6 +4242,7 @@ async function saveDistribution(epiId, epiType, available) {
 
   btn.disabled = false;
   btn.innerHTML = ic("check",13) + " Enregistrer la distribution";
+  btn.disabled=false; btn.innerHTML=ic("check",13)+" Enregistrer la distribution";
   closeMod();
   toast(qty+" x "+epiType+" distribue(s) a "+empName);
   await pgEPIStock();
@@ -4236,7 +4252,7 @@ async function saveDistribution(epiId, epiType, available) {
 function openRestockModal(epiId, epiType, currentInitial) {
   document.getElementById("mtit").textContent = "Réapprovisionnement — " + epiType;
   document.getElementById("msave").innerHTML = ic("check",13) + " Confirmer le réapprovisionnement";
-  document.getElementById("msave").onclick = function(){ saveRestock(epiId, epiType, currentInitial); };
+  S._saveAction=function(){ saveRestock(epiId, epiType, currentInitial); };
   document.getElementById("mmsg").style.display = "none";
   document.getElementById("mbtns").style.display = "flex";
 
@@ -4299,6 +4315,7 @@ async function saveRestock(epiId, epiType, currentInitial) {
 
   btn.disabled = false;
   btn.innerHTML = ic("check",13) + " Confirmer le reapprovisionnement";
+  btn.disabled=false; btn.innerHTML=ic("check",13)+" Confirmer";
   closeMod();
   toast(qty+" x "+epiType+" reapprovisionne! Nouveau stock: "+(currentInitial+qty));
   await pgEPIStock();
@@ -4351,8 +4368,11 @@ async function pgDistHistory(epiId) {
   document.getElementById("mtit").textContent = epiId
     ? "Historique — " + ((ppeList.find(function(p){return p.id==epiId;})||{}).type||"EPI")
     : "Historique complet des distributions";
-  document.getElementById("msave").style.display = "none";
-  document.getElementById("mbtns").innerHTML = '<button onclick="closeMod()" class="btn bg0">Fermer</button>';
+  S._saveAction=null;
+  var msEl=document.getElementById("msave");
+  if(msEl)msEl.style.display="none";
+  var mcEl=document.getElementById("mcancel");
+  if(mcEl){mcEl.textContent="Fermer";mcEl.style.cssText="width:100%;justify-content:center";}
   document.getElementById("mmsg").style.display = "none";
 
   var rows = dists.length ? dists.map(function(d) {
@@ -4377,6 +4397,146 @@ async function pgDistHistory(epiId) {
   showMod();
 }
 
+
+// ================================================================
+// ARCHIVE TAILLES EPI EMPLOYES
+// ================================================================
+async function pgEmpSizes() {
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement des tailles...</p></div>');
+
+  var emps = await gRecs("employees");
+  var active = emps.filter(function(e){ return e.status === "ACTIVE" || !e.status; });
+
+  // Stats
+  var withSizes = emps.filter(function(e){ return e.shirtSize || e.shoeSize; }).length;
+  var missing = emps.length - withSizes;
+
+  // Size distribution for shirts
+  var shirtDist = {};
+  var shoeDist = {};
+  emps.forEach(function(e){
+    if(e.shirtSize){ shirtDist[e.shirtSize] = (shirtDist[e.shirtSize]||0)+1; }
+    if(e.shoeSize) { shoeDist[e.shoeSize]  = (shoeDist[e.shoeSize] ||0)+1; }
+  });
+
+  // KPIs
+  var kpiH = [
+    {l:"Total employes",    v:emps.length,   c:"#4f6ef7"},
+    {l:"Tailles renseignees", v:withSizes,   c:"#22c55e"},
+    {l:"Tailles manquantes",  v:missing,     c:missing>0?"#f59e0b":"#22c55e"},
+    {l:"Actifs",              v:active.length,c:"#38bdf8"},
+  ].map(function(k){
+    return '<div class="kpi"><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;margin:0 0 4px">'+k.l+'</p>'
+      +'<h2 style="font-size:24px;font-weight:900;margin:0;color:'+k.c+'">'+k.v+'</h2></div>';
+  }).join('');
+
+  // Size distribution charts
+  function distBars(dist, label) {
+    var entries = Object.entries(dist).sort(function(a,b){return b[1]-a[1];});
+    if(!entries.length) return '<p style="color:#6b6f96;font-size:12px">Aucune donnee</p>';
+    var max = Math.max.apply(null, entries.map(function(e){return e[1];}));
+    return entries.map(function(e){
+      var pct = Math.round(e[1]/max*100);
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +'<span style="width:50px;font-size:11px;font-weight:700;color:#e2e5f5;flex-shrink:0;text-align:right">'+xe(e[0])+'</span>'
+        +'<div style="flex:1;height:20px;background:#232640;border-radius:4px;overflow:hidden">'
+        +'<div style="height:100%;width:'+pct+'%;background:#4f6ef7;border-radius:4px;display:flex;align-items:center;padding-left:6px">'
+        +'<span style="font-size:10px;font-weight:700;color:#fff">'+e[1]+'</span></div></div></div>';
+    }).join('');
+  }
+
+  // CSV export
+  var csvRows = [['Ref','Nom complet','Poste','Site','Statut','Taille chemise','Taille pantalon','Pointure','Taille casque','Taille gants'].join(';')];
+  emps.forEach(function(e){
+    csvRows.push([
+      xe(e.ref||''), xe(e.fullName||''), xe(e.position||''), xe(e.site||''), xe(e.status||''),
+      xe(e.shirtSize||''), xe(e.pantsSize||''), xe(e.shoeSize||''),
+      xe(e.helmetSize||''), xe(e.glovesSize||'')
+    ].join(';'));
+  });
+
+  // Main table
+  var tableRows = emps.length ? emps.map(function(e){
+    var hasSizes = e.shirtSize || e.shoeSize || e.pantsSize;
+    var rowBg = !hasSizes ? 'background:#f59e0b05;' : '';
+    function sizeCell(val, warn) {
+      if(!val) return '<td style="color:#ef4444;font-size:11px">'+ic("warn",11)+' Manquant</td>';
+      return '<td style="font-weight:600;color:#e2e5f5">'+xe(val)+'</td>';
+    }
+    return '<tr style="'+rowBg+'">'
+      +'<td style="padding:8px 10px"><div style="display:flex;align-items:center;gap:8px">'
+      +'<div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0">'
+      +xe((e.fullName||'?').charAt(0).toUpperCase())+'</div>'
+      +'<div><p style="margin:0;font-size:12px;font-weight:700">'+xe(e.fullName||'--')+'</p>'
+      +'<p style="margin:0;font-size:10px;color:#6b6f96">'+xe(e.position||'')+(e.site?' · '+xe(e.site):'')+'</p></div></div></td>'
+      +bdg(e.status||'ACTIVE')+'</td>'
+      +sizeCell(e.shirtSize)
+      +'<td style="color:#e2e5f5;font-weight:600">'+(e.pantsSize||'<span style="color:#ef4444;font-size:11px">—</span>')+'</td>'
+      +sizeCell(e.shoeSize)
+      +sizeCell(e.helmetSize)
+      +sizeCell(e.glovesSize)
+      +'<td><button data-action="edit" data-mk="employees" data-id="'+e.id+'" style="background:#4f6ef718;border:1px solid #4f6ef730;border-radius:6px;padding:4px 10px;cursor:pointer;color:#4f6ef7;font-size:11px;font-family:inherit;font-weight:600">Renseigner</button></td>'
+      +'</tr>';
+  }).join('') : '<tr><td colspan="8" style="padding:24px;text-align:center;color:#6b6f96">Aucun employe</td></tr>';
+
+  put('<div class="fi">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:20px">'
+    +'<div><h1 style="font-size:19px;font-weight:800;margin:0">Tailles EPI — Archive</h1>'
+    +'<p style="color:#6b6f96;font-size:12px;margin:3px 0 0">Tailles de vêtements et pointures de chaussures par employé</p></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button onclick="exportEmpSizes()" class="btn bg0 bsm">'+ic("dl",13)+' Exporter CSV</button>'
+    +'<button onclick="goto(\'employees\')" class="btn bp bsm">'+ic("employee",13)+' Gérer les employés</button>'
+    +'</div></div>'
+
+    +'<div class="gkpi" style="margin-bottom:20px">'+kpiH+'</div>'
+
+    +(missing>0
+      ?'<div class="aw" style="margin-bottom:14px">'+ic("warn",14)+' '
+        +missing+' employé(s) sans tailles renseignées — cliquez "Renseigner" pour les compléter'
+        +'</div>'
+      :'')
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Répartition tailles chemises / vestes</h3>'
+    +distBars(shirtDist,'Taille')+' </div>'
+    +'<div class="card"><h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Répartition pointures chaussures</h3>'
+    +distBars(shoeDist,'Pointure')+'</div>'
+    +'</div>'
+
+    +'<div class="card0">'
+    +'<div style="padding:12px 14px;border-bottom:1px solid #232640;display:flex;justify-content:space-between;align-items:center">'
+    +'<h3 style="font-size:13px;font-weight:700;margin:0">Tableau complet des tailles</h3>'
+    +'<span style="font-size:12px;color:#6b6f96">'+emps.length+' employé(s)</span>'
+    +'</div>'
+    +'<div class="tw"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="background:#1a1d2b">'
+    +'<th style="padding:10px;text-align:left;font-size:10px;color:#6b6f96;text-transform:uppercase;letter-spacing:.4px">Employé</th>'
+    +'<th style="padding:10px;text-align:left;font-size:10px;color:#6b6f96;text-transform:uppercase">Statut</th>'
+    +'<th style="padding:10px;text-align:center;font-size:10px;color:#6b6f96;text-transform:uppercase">Chemise / Veste</th>'
+    +'<th style="padding:10px;text-align:center;font-size:10px;color:#6b6f96;text-transform:uppercase">Pantalon (cm)</th>'
+    +'<th style="padding:10px;text-align:center;font-size:10px;color:#6b6f96;text-transform:uppercase">Chaussures</th>'
+    +'<th style="padding:10px;text-align:center;font-size:10px;color:#6b6f96;text-transform:uppercase">Casque</th>'
+    +'<th style="padding:10px;text-align:center;font-size:10px;color:#6b6f96;text-transform:uppercase">Gants</th>'
+    +'<th style="padding:10px;width:100px"></th>'
+    +'</tr></thead>'
+    +'<tbody>'+tableRows+'</tbody>'
+    +'</table></div></div>'
+    +'</div>');
+
+  // Store CSV for export
+  window._empSizesCSV = csvRows.join('\n');
+}
+
+function exportEmpSizes() {
+  var csv = window._empSizesCSV || '';
+  if (!csv) { toast('Chargez d\'abord la page', true); return; }
+  var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tailles_epi_employes.csv';
+  a.click();
+  toast('Export CSV tailles employes');
+}
 
 // ================================================================
 // UI HELPERS
