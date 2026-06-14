@@ -49,7 +49,7 @@ body.light .tbtn{border-color:#e2e6f5}
 #gsinput{width:100%;padding:7px 10px 7px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;font-size:13px;box-sizing:border-box}
 body.light #gsinput{background:#f5f7ff;border-color:#e2e6f5;color:#1a1d2e}
 #gsico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none}
-#gsres{display:none;position:absolute;top:38px;left:0;right:0;background:#131620;border:1px solid #232640;border-radius:10px;max-height:320px;overflow-y:auto;z-index:2000;box-shadow:0 8px 32px #00000088}
+#gsres{display:none;position:fixed;top:58px;left:50%;transform:translateX(-50%);width:min(600px,90vw);background:#131620;border:1px solid #4f6ef740;border-radius:14px;max-height:60vh;overflow-y:auto;z-index:9999;box-shadow:0 16px 48px #00000099}
 body.light #gsres{background:#fff;border-color:#e2e6f5}
 #syncbar{position:fixed;top:50px;left:0;right:0;height:3px;background:transparent;z-index:200}
 #syncprog{height:100%;width:0;background:linear-gradient(90deg,#4f6ef7,#7c5cf6);transition:width .3s ease}
@@ -1788,23 +1788,70 @@ async function pgCRUD(mk) {
       return '<tr style="'+bg+'">'+tds+'<td><div style="display:flex;gap:3px"><button data-action="edit" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+"</button>"+'<button data-action="del" data-id="'+row.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+"</button></div></td></tr>";
     }).join("");
 
-  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1><p>"+"<span id='crud-count'>"+ filt.length +"</span> enregistrement(s)</p></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">'+t('import_excel')+'</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' '+t("export_csv")+'</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' '+t("new_record")+'au</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder=t("search") value="'+xe(S.search)+'" id="crud-search-input" oninput="filterCRUD(this.value)" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody id='crud-tbody'>"+trs+"</tbody></table></div></div></div>");
+  put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">'+t('import_excel')+'</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' '+t("export_csv")+'</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' '+t("new_record")+'au</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder=t("search") value="'+xe(S.search)+'" id="crud-search-input" oninput="filterCRUD(this.value)" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div id="crud-filters" style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 14px;background:#0f111a;border-bottom:1px solid #232640;align-items:center"><select id="crud-filter-status" onchange="applyFilters()" style="background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:6px 10px;color:#e2e5f5;font-size:12px;cursor:pointer"><option value="">Tous statuts</option></select><select id="crud-filter-site" onchange="applyFilters()" style="background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:6px 10px;color:#e2e5f5;font-size:12px;cursor:pointer"><option value="">Tous sites</option></select><select id="crud-filter-severity" onchange="applyFilters()" style="background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:6px 10px;color:#e2e5f5;font-size:12px;cursor:pointer;display:none"><option value="">Toutes gravites</option></select><button onclick="clearCRUDFilters()" style="background:none;border:1px solid #4f6ef730;border-radius:8px;padding:6px 12px;color:#4f6ef7;cursor:pointer;font-size:12px;font-family:inherit">Effacer filtres</button><span id="crud-count-bar" style="margin-left:auto;font-size:11px;color:#6b6f96"></span></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody id='crud-tbody'>"+trs+"</tbody></table></div></div></div>");
 }
 
 
 // ================================================================
 // FAST LOCAL SEARCH - No network call, uses cache only
 // ================================================================
+function applyFilters() {
+  var inp = document.getElementById("crud-search-input");
+  filterCRUD(inp ? inp.value : "");
+}
+
+function clearCRUDFilters() {
+  var si = document.getElementById("crud-search-input");
+  var fs = document.getElementById("crud-filter-status");
+  var ff = document.getElementById("crud-filter-site");
+  var fv = document.getElementById("crud-filter-severity");
+  if(si) si.value="";
+  if(fs) fs.value="";
+  if(ff) ff.value="";
+  if(fv) fv.value="";
+  S.search="";
+  filterCRUD("");
+}
+
 function filterCRUD(q) {
   var mk = S.pg;
   S.search = q;
   var rows = cache[mk] || [];
   var q2 = (q||"").toLowerCase().trim();
-  var filt = q2 ? rows.filter(function(r){
-    return Object.values(r).some(function(v){
-      return String(v||"").toLowerCase().indexOf(q2) >= 0;
-    });
-  }) : rows;
+  var statusF = (document.getElementById("crud-filter-status")||{}).value||"";
+  var siteF   = (document.getElementById("crud-filter-site")||{}).value||"";
+  var sevF    = (document.getElementById("crud-filter-severity")||{}).value||"";
+
+  var filt = rows.filter(function(r){
+    if(q2 && !Object.values(r).some(function(v){ return String(v||"").toLowerCase().indexOf(q2)>=0; })) return false;
+    if(statusF && (r.status||"")!==statusF) return false;
+    if(siteF   && (r.site||"")  !==siteF)   return false;
+    if(sevF    && (r.severity||r.level||"")!==sevF) return false;
+    return true;
+  });
+
+  // Populate filter dropdowns (once, using all rows)
+  function populateFilter(id, key) {
+    var el = document.getElementById(id); if(!el) return;
+    var curVal = el.value;
+    var vals = [...new Set(rows.map(function(r){return r[key]||"";}).filter(Boolean))].sort();
+    if(vals.length) {
+      el.innerHTML = '<option value="">Tous</option>'
+        + vals.map(function(v){return '<option value="'+v+'"'+(v===curVal?' selected':'')+'>'+v+'</option>';}).join('');
+    } else { el.style.display='none'; }
+  }
+  populateFilter("crud-filter-status","status");
+  populateFilter("crud-filter-site","site");
+  // Show severity filter for incidents/risks
+  var sevEl = document.getElementById("crud-filter-severity");
+  if(sevEl) {
+    var hasSev = rows.some(function(r){return r.severity||r.level;});
+    sevEl.style.display = hasSev ? "" : "none";
+    populateFilter("crud-filter-severity", rows[0]&&rows[0].severity?"severity":"level");
+  }
+  // Update count bar
+  var cb = document.getElementById("crud-count-bar");
+  if(cb) cb.textContent = filt.length + " / " + rows.length + " enregistrement(s)";
   var def = M[mk];
   if (!def) return;
   var trs = !filt.length
