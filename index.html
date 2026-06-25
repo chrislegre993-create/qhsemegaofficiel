@@ -67,6 +67,96 @@ nav{flex:1;overflow-y:auto;padding:5px}
 .ng{font-size:9px;color:#6b6f96;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:9px 7px 3px}
 .ni{width:100%;padding:8px 9px;border-radius:7px;display:flex;align-items:center;gap:8px;color:#6b6f96;font-size:12px;cursor:pointer;margin-bottom:1px;background:transparent;text-align:left}
 .ni:hover{background:#ffffff0a}
+
+/* ============================================================
+   EFFETS HOVER / ACTIVE - Survol souris + Clic actif
+   ============================================================ */
+
+/* Boutons generaux */
+.btn{transition:transform .12s ease,box-shadow .12s ease,opacity .12s ease,background .12s ease,border-color .12s ease}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.btn:active{transform:translateY(0) scale(.97);filter:brightness(.94);transition:transform .05s ease}
+
+.bp:hover{box-shadow:0 4px 14px #4f6ef755}
+.bp:active{box-shadow:0 2px 6px #4f6ef766}
+
+.bg0:hover{border-color:#4f6ef760;color:#a9b4f7;background:#4f6ef70d}
+.bg0:active{background:#4f6ef718;border-color:#4f6ef7}
+
+/* Boutons topbar (theme, notif, lang, push...) */
+.tbtn{transition:background .12s ease,border-color .12s ease,transform .1s ease}
+.tbtn:hover{background:#ffffff0d;border-color:#4f6ef750;color:#c7cdfa}
+.tbtn:active{transform:scale(.92);background:#4f6ef722}
+
+/* Navigation laterale */
+.ni{transition:background .12s ease,padding-left .12s ease,color .12s ease}
+.ni:hover{background:#ffffff0a;color:#cfd3ee;padding-left:12px}
+.ni:active{background:#4f6ef722;transform:scale(.98)}
+
+/* KPI cards cliquables */
+.kpi{transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.kpi:hover{transform:translateY(-2px);border-color:#4f6ef750;box-shadow:0 8px 20px #00000055}
+.kpi:active{transform:translateY(0) scale(.98)}
+
+/* Cartes generales */
+.card{transition:border-color .15s ease,box-shadow .15s ease}
+.card0{transition:border-color .15s ease,box-shadow .15s ease}
+
+/* Badges et pills */
+.bdg{transition:transform .1s ease,filter .1s ease}
+
+/* Lignes de tableau */
+.tw table tbody tr{transition:background .12s ease}
+.tw table tbody tr:hover{background:#ffffff06}
+
+/* Inputs et selects */
+input,select,textarea{transition:border-color .15s ease,box-shadow .15s ease}
+input:hover,select:hover,textarea:hover{border-color:#4f6ef750}
+input:focus,select:focus,textarea:focus{border-color:#4f6ef7;box-shadow:0 0 0 3px #4f6ef722;outline:none}
+
+/* Boutons d'action icones (edit/delete dans tableaux) */
+button[data-action]{transition:transform .1s ease,filter .1s ease,background .12s ease}
+button[data-action]:hover{filter:brightness(1.25);transform:translateY(-1px)}
+button[data-action]:active{transform:translateY(0) scale(.92)}
+
+/* Liens cliquables generaux (style "Voir tout" etc) */
+a,[onclick]{cursor:pointer}
+
+/* Curseur pointer pour tout element interactif */
+.btn,.tbtn,.ni,.kpi,button,select,[onclick],.bdg[onclick]{cursor:pointer}
+
+/* Outils QHSE cards (hover deja gere inline mais on ajoute active) */
+[data-action="ishi-add"]:active,
+[data-action="del"]:active,
+[data-action="edit"]:active{transform:scale(.9)}
+
+/* Switch/toggle style elements */
+.tgl{transition:background .15s ease}
+
+/* Sidebar nav group headers - subtle hover for visual feedback even if not clickable */
+.ng{transition:color .15s ease}
+
+/* FAB (floating action button) for AI assistant */
+#fab{transition:transform .15s ease,box-shadow .15s ease}
+#fab:hover{transform:scale(1.08);box-shadow:0 8px 24px #4f6ef766}
+#fab:active{transform:scale(.95)}
+
+/* Modal buttons */
+#msave:hover{filter:brightness(1.1)}
+#msave:active{filter:brightness(.9);transform:scale(.97)}
+#mcancel:hover{background:#ffffff08}
+#mcancel:active{background:#ffffff14}
+
+/* Sidebar toggle / hamburger */
+#sbtn:hover,#mbtn:hover{background:#ffffff0d}
+#sbtn:active,#mbtn:active{transform:scale(.9)}
+
+/* Light mode adjustments for hover states */
+body.light .ni:hover{background:#00000008}
+body.light .tbtn:hover{background:#00000008}
+body.light .tw table tbody tr:hover{background:#00000005}
+body.light .kpi:hover{box-shadow:0 8px 20px #00000022}
+
 .ni.on{background:#4f6ef718;color:#4f6ef7;font-weight:700}
 .nfoot{padding:5px 5px 9px;border-top:1px solid #232640;flex-shrink:0}
 body.light .nfoot{border-color:#e2e6f5}
