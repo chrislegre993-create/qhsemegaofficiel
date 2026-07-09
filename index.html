@@ -1875,7 +1875,7 @@ async function pgCRUD(mk) {
       var bg="";
       if(row.status==="NON CONFORME"||row.status==="EXPIRE")bg="background:#ef444408;";
       var tds=def.c.map(function(col){var v=row[col.k];if(col.b)return "<td>"+bdg(v||"")+"</td>";if(col.e)return "<td>"+ebdg(v)+"</td>";return '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+xe(v==null?"--":String(v))+"</td>";}).join("");
-      return '<tr style="'+bg+'">'+tds+'<td><div style="display:flex;gap:3px"><button data-action="edit" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+"</button>"+'<button data-action="del" data-id="'+row.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+"</button></div></td></tr>";
+      return '<tr style="'+bg+'">'+tds+'<td><div style="display:flex;gap:3px"><button data-action="view" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#4f6ef718;border:1px solid #4f6ef730;border-radius:6px;padding:3px 7px;cursor:pointer;color:#4f6ef7;font-size:10px;font-weight:600">👁 Voir</button><button data-action="edit" data-mk="'+mk+'" data-id="'+row.id+'" style="background:#1a1d2b;border:1px solid #232640;border-radius:6px;padding:3px 6px;cursor:pointer;color:#6b6f96;display:flex">'+ic("edit",12)+"</button>"+'<button data-action="del" data-id="'+row.id+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:3px 6px;cursor:pointer;color:#ef4444;display:flex">'+ic("del",12)+"</button></div></td></tr>";
     }).join("");
 
   put('<div class="fi"><div class="sh"><div class="st"><span style="color:#4f6ef7">'+ic(def.i,22)+"</span><div><h1>"+def.l+"</h1></div></div>"+'<div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="xlsimp" data-mk="'+mk+'" class="btn bg0 bsm">'+t('import_excel')+'</button><button data-action="csv" data-mk="'+mk+'" class="btn bg0 bsm">'+ic("dl",12)+' '+t("export_csv")+'</button><button data-action="create" data-mk="'+mk+'" class="btn bp bsm">'+ic("plus",12)+' '+t("new_record")+'au</button></div></div><div style="position:relative;margin-bottom:11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6b6f96;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input placeholder=t("search") value="'+xe(S.search)+'" id="crud-search-input" oninput="filterCRUD(this.value)" style="width:100%;padding:9px 10px 9px 30px;background:#1a1d2b;border:1px solid #232640;border-radius:9px;color:#e2e5f5;box-sizing:border-box"/></div><div id="crud-filters" style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 14px;background:#0f111a;border-bottom:1px solid #232640;align-items:center"><select id="crud-filter-status" onchange="applyFilters()" style="background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:6px 10px;color:#e2e5f5;font-size:12px;cursor:pointer"><option value="">Tous statuts</option></select><select id="crud-filter-site" onchange="applyFilters()" style="background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:6px 10px;color:#e2e5f5;font-size:12px;cursor:pointer"><option value="">Tous sites</option></select><select id="crud-filter-severity" onchange="applyFilters()" style="background:#1a1d2b;border:1px solid #232640;border-radius:8px;padding:6px 10px;color:#e2e5f5;font-size:12px;cursor:pointer;display:none"><option value="">Toutes gravites</option></select><button onclick="clearCRUDFilters()" style="background:none;border:1px solid #4f6ef730;border-radius:8px;padding:6px 12px;color:#4f6ef7;cursor:pointer;font-size:12px;font-family:inherit">Effacer filtres</button><span id="crud-count-bar" style="margin-left:auto;font-size:11px;color:#6b6f96"></span></div><div class="card0"><div class="tw"><table><thead><tr>'+ths+"</tr></thead><tbody id='crud-tbody'>"+trs+"</tbody></table></div></div></div>");
@@ -2251,7 +2251,8 @@ document.addEventListener("click",function(e){
   var act=btn.getAttribute("data-action");
   var id=btn.getAttribute("data-id");
   var mk=btn.getAttribute("data-mk")||S.pg;
-  if(act==="edit")oEdit(mk,id);
+  if(act==="view"){oView(mk,id);}
+  else if(act==="edit")oEdit(mk,id);
   else if(act==="del"){if(confirm(t("confirm_delete")))dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}
   else if(act==="create")oCreate(mk);
   else if(act==="csv")csvExp(mk);
@@ -4673,6 +4674,119 @@ function exportEmpSizes() {
   a.download = 'tailles_epi_employes.csv';
   a.click();
   toast('Export CSV tailles employes');
+}
+
+
+// ================================================================
+// FICHE DETAIL - oView (lecture seule)
+// ================================================================
+var VIEW_CONFIG={
+  incidents:{icon:"incidents",color:"#ef4444",title:function(r){return r.title||"Incident";},sections:[
+    {title:"General",fields:[{k:"ref",l:"Ref"},{k:"type",l:"Type"},{k:"date",l:"Date"},{k:"site",l:"Site"},{k:"location",l:"Lieu"},{k:"severity",l:"Gravite",badge:true},{k:"status",l:"Statut",badge:true}]},
+    {title:"Personnes",fields:[{k:"injured",l:"Blesse"},{k:"witness",l:"Temoin"},{k:"reporter",l:"Declare par"},{k:"supervisor",l:"Responsable"}]},
+    {title:"Description",fields:[{k:"description",l:"Description",long:true},{k:"causes",l:"Causes",long:true},{k:"lostDays",l:"Jours perdus"},{k:"medicalCare",l:"Soins"}]},
+    {title:"Actions",fields:[{k:"immediateAction",l:"Actions immediates",long:true},{k:"correctiveAction",l:"Actions correctives",long:true},{k:"closureDate",l:"Cloture"},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  vehicles:{icon:"vehicle",color:"#38bdf8",title:function(r){return (r.plate||"")+" - "+(r.model||"Vehicule");},sections:[
+    {title:"Identification",fields:[{k:"plate",l:"Immatriculation"},{k:"model",l:"Modele"},{k:"brand",l:"Marque"},{k:"year",l:"Annee"},{k:"type",l:"Type"},{k:"fuel",l:"Carburant"},{k:"site",l:"Site"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Conducteur",fields:[{k:"driver",l:"Conducteur"},{k:"driverPhone",l:"Tel"},{k:"driverLicense",l:"N permis"}]},
+    {title:"Documents",fields:[{k:"licenseExpiry",l:"Carte grise",expiry:true},{k:"insuranceExpiry",l:"Assurance",expiry:true},{k:"technicalExpiry",l:"Visite technique",expiry:true},{k:"transportCardExpiry",l:"Carte transport",expiry:true},{k:"oilChangeExpiry",l:"Vidange",expiry:true}]},
+    {title:"Entretien",fields:[{k:"lastService",l:"Dernier entretien"},{k:"mileage",l:"Kilometrage"},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  employees:{icon:"employee",color:"#4f6ef7",title:function(r){return r.fullName||"Employe";},sections:[
+    {title:"Identite",fields:[{k:"ref",l:"Ref"},{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site"},{k:"contractType",l:"Contrat"},{k:"hireDate",l:"Embauche"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Contact",fields:[{k:"phone",l:"Telephone"},{k:"email",l:"Email"},{k:"emergencyContact",l:"Urgence"},{k:"emergencyPhone",l:"Tel urgence"}]},
+    {title:"Sante",fields:[{k:"bloodGroup",l:"Groupe sanguin"},{k:"medicalRestrictions",l:"Restrictions",long:true},{k:"lastMedical",l:"Derniere visite"},{k:"nextMedical",l:"Prochaine visite",expiry:true}]},
+    {title:"Tailles EPI",fields:[{k:"shirtSize",l:"Chemise"},{k:"pantsSize",l:"Pantalon cm"},{k:"shoeSize",l:"Pointure"},{k:"helmetSize",l:"Casque"},{k:"glovesSize",l:"Gants"}]},
+    {title:"EPI et Formations",fields:[{k:"assignedPPE",l:"EPI",long:true},{k:"formationsList",l:"Formations",long:true},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  ppe:{icon:"ppe",color:"#f59e0b",title:function(r){return r.type||"EPI";},sections:[
+    {title:"Identification",fields:[{k:"ref",l:"Ref"},{k:"type",l:"Type"},{k:"standard",l:"Norme"},{k:"site",l:"Site"},{k:"supplier",l:"Fournisseur"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Stock",fields:[{k:"quantityInitial",l:"Stock initial"},{k:"quantityAvailable",l:"Disponible"},{k:"quantityDistributed",l:"Distribue"},{k:"minStock",l:"Seuil"},{k:"unitPrice",l:"Prix unitaire FCFA"}]},
+    {title:"Dates",fields:[{k:"purchaseDate",l:"Achat"},{k:"expiry",l:"Expiration",expiry:true},{k:"renewalAlert",l:"Alerte jours"}]},
+    {title:"Notes",fields:[{k:"notes",l:"Notes",long:true}]}
+  ]},
+  risks:{icon:"risks",color:"#f59e0b",title:function(r){return r.hazard||"Risque";},sections:[
+    {title:"Identification",fields:[{k:"ref",l:"Ref"},{k:"type",l:"Type"},{k:"unit",l:"Unite"},{k:"site",l:"Site"},{k:"level",l:"Niveau",badge:true}]},
+    {title:"Evaluation",fields:[{k:"hazard",l:"Danger"},{k:"situation",l:"Situation",long:true},{k:"probability",l:"Probabilite"},{k:"gravity",l:"Gravite"},{k:"causes",l:"Causes",long:true}]},
+    {title:"Maitrise",fields:[{k:"controls",l:"Mesures existantes",long:true},{k:"newMeasures",l:"Nouvelles mesures",long:true},{k:"responsible",l:"Responsable"},{k:"dueDate",l:"Echeance",expiry:true},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  audits:{icon:"audits",color:"#7c5cf6",title:function(r){return r.title||"Audit";},sections:[
+    {title:"Informations",fields:[{k:"ref",l:"Ref"},{k:"type",l:"Type"},{k:"standard",l:"Referentiel"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"auditor",l:"Auditeur"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Resultats",fields:[{k:"score",l:"Score"},{k:"ncMajor",l:"NC Majeures"},{k:"ncMinor",l:"NC Mineures"},{k:"observations",l:"Observations",long:true},{k:"conclusions",l:"Conclusions",long:true},{k:"nextAudit",l:"Prochain audit",expiry:true},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  nc:{icon:"nc",color:"#ec4899",title:function(r){return r.ref||(r.description||"NC").substring(0,40);},sections:[
+    {title:"Identification",fields:[{k:"ref",l:"Ref"},{k:"type",l:"Type"},{k:"source",l:"Source"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Description",fields:[{k:"description",l:"Description",long:true},{k:"impact",l:"Impact",long:true}]},
+    {title:"Traitement",fields:[{k:"correction",l:"Correction",long:true},{k:"correctiveAction",l:"Action corrective",long:true},{k:"responsible",l:"Responsable"},{k:"dueDate",l:"Echeance",expiry:true},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  actions:{icon:"actions",color:"#22c55e",title:function(r){return r.title||"Action";},sections:[
+    {title:"Informations",fields:[{k:"ref",l:"Ref"},{k:"type",l:"Type"},{k:"origin",l:"Origine"},{k:"priority",l:"Priorite",badge:true},{k:"status",l:"Statut",badge:true}]},
+    {title:"Details",fields:[{k:"description",l:"Description",long:true},{k:"result",l:"Resultat attendu",long:true},{k:"responsible",l:"Responsable"},{k:"dueDate",l:"Echeance",expiry:true},{k:"completionDate",l:"Realisation"},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  training:{icon:"training",color:"#22c55e",title:function(r){return r.title||"Formation";},sections:[
+    {title:"Formation",fields:[{k:"title",l:"Intitule"},{k:"type",l:"Type"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"duration",l:"Duree h"},{k:"trainer",l:"Formateur"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Contenu",fields:[{k:"participants",l:"Participants",long:true},{k:"objectives",l:"Objectifs",long:true},{k:"results",l:"Resultats",long:true},{k:"nextSession",l:"Prochaine session",expiry:true},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  fire:{icon:"fire",color:"#f97316",title:function(r){return r.type||r.ref||"Equipement incendie";},sections:[
+    {title:"Identification",fields:[{k:"ref",l:"Ref"},{k:"type",l:"Type"},{k:"location",l:"Emplacement"},{k:"site",l:"Site"},{k:"capacity",l:"Capacite"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Verifications",fields:[{k:"lastCheck",l:"Derniere verification"},{k:"nextCheck",l:"Prochaine verification",expiry:true},{k:"inspector",l:"Verificateur"},{k:"result",l:"Resultat"},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  meetings:{icon:"meeting",color:"#22c55e",title:function(r){return r.title||"Reunion";},sections:[
+    {title:"Reunion",fields:[{k:"title",l:"Titre"},{k:"type",l:"Type"},{k:"site",l:"Site"},{k:"date",l:"Date"},{k:"chairman",l:"Animateur"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Contenu",fields:[{k:"participants",l:"Participants",long:true},{k:"agenda",l:"Ordre du jour",long:true},{k:"decisions",l:"Decisions",long:true},{k:"actions",l:"Actions",long:true},{k:"nextMeeting",l:"Prochaine reunion"},{k:"notes",l:"Notes",long:true}]}
+  ]},
+  environment:{icon:"environment",color:"#22c55e",title:function(r){return r.type||"Environnement";},sections:[
+    {title:"Mesure",fields:[{k:"type",l:"Type"},{k:"period",l:"Periode"},{k:"site",l:"Site"},{k:"value",l:"Valeur"},{k:"unit",l:"Unite"},{k:"target",l:"Objectif"},{k:"status",l:"Statut",badge:true}]},
+    {title:"Details",fields:[{k:"source",l:"Source"},{k:"notes",l:"Notes",long:true}]}
+  ]}
+};
+
+async function oView(mk,id){
+  var rows=await gRecs(mk);
+  var r=rows.find(function(row){return String(row.id)===String(id);});
+  if(!r){toast("Introuvable",true);return;}
+  var cfg=VIEW_CONFIG[mk]||null;
+  var color=cfg?cfg.color:"#4f6ef7";
+  var ico=cfg?cfg.icon:mk;
+  var title2=cfg?cfg.title(r):(r.title||r.ref||"Detail");
+  var def=M[mk];
+  var sectHTML="";
+  if(cfg&&cfg.sections){
+    cfg.sections.forEach(function(sec){
+      var fH="";var has=false;
+      sec.fields.forEach(function(f){
+        var v=r[f.k];if(v===null||v===undefined||v==="")return;has=true;
+        var disp="";
+        if(f.badge){disp=bdg(v);}
+        else if(f.expiry){var d=dl(v);var c2=d===null?"#6b6f96":d<0?"#ef4444":d<=30?"#f59e0b":"#22c55e";var lbl=d===null?"--":d<0?"EXPIRE ("+Math.abs(d)+"j)":d===0?"Auj.":d+"j";disp='<span style="color:'+c2+';font-weight:700">'+xe(v)+' <small>('+lbl+')</small></span>';}
+        else if(f.long){disp='<div style="background:#1a1d2b;border-radius:8px;padding:10px;font-size:12px;color:#c7cdfa;white-space:pre-wrap;line-height:1.6">'+xe(String(v))+'</div>';}
+        else{disp='<span style="font-size:14px;font-weight:600;color:#e2e5f5">'+xe(String(v))+'</span>';}
+        fH+='<div style="padding:8px 0;border-bottom:1px solid #232640"><p style="margin:0 0 3px;font-size:10px;color:#6b6f96;text-transform:uppercase;letter-spacing:.5px;font-weight:600">'+f.l+'</p><div>'+disp+'</div></div>';
+      });
+      if(has)sectHTML+='<div style="margin-bottom:14px"><p style="font-size:11px;font-weight:700;color:'+color+';text-transform:uppercase;margin:0 0 8px;padding-bottom:6px;border-bottom:2px solid '+color+'30">'+sec.title+'</p>'+fH+'</div>';
+    });
+  } else if(def){
+    var fH2="";
+    def.f().forEach(function(f){var v=r[f.k];if(v===null||v===undefined||v==="")return;fH2+='<div style="padding:8px 0;border-bottom:1px solid #232640"><p style="margin:0 0 3px;font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600">'+f.l+'</p><span style="font-size:14px;font-weight:600;color:#e2e5f5">'+xe(String(v))+'</span></div>';});
+    sectHTML='<div style="margin-bottom:14px">'+fH2+'</div>';
+  }
+  document.getElementById("mtit").textContent=title2;
+  var msave=document.getElementById("msave");
+  if(msave){msave.innerHTML=ic("edit",13)+" Modifier";msave.style.display="";msave.disabled=false;}
+  S._saveAction=function(){closeMod();oEdit(mk,id);};
+  var mcancel=document.getElementById("mcancel");
+  if(mcancel){mcancel.textContent="Fermer";mcancel.style.display="";}
+  document.getElementById("mmsg").style.display="none";
+  document.getElementById("mflds").innerHTML=
+    '<div style="grid-column:1/-1">'
+    +'<div style="background:linear-gradient(135deg,'+color+'22,'+color+'08);border:1px solid '+color+'30;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px">'
+    +'<div style="width:46px;height:46px;border-radius:12px;background:'+color+';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff">'+ic(ico,22)+'</div>'
+    +'<div><p style="margin:0;font-size:16px;font-weight:800;color:#e2e5f5">'+xe(title2)+'</p>'
+    +'<p style="margin:2px 0 0;font-size:11px;color:#6b6f96">'+(def?def.l:mk)+(r.site?" · "+xe(r.site):"")+(r.date?" · "+xe(r.date):"")+'</p></div>'
+    +(r.status?'<div style="margin-left:auto">'+bdg(r.status)+'</div>':'')
+    +'</div>'+sectHTML+'</div>';
+  showMod();
 }
 
 // ================================================================
