@@ -1079,8 +1079,8 @@ fire:{l:"Securite Incendie",i:"fire",
   c:[{k:"ref",l:"Ref."},{k:"type",l:"Type"},{k:"location",l:"Emplacement"},{k:"site",l:"Site"},{k:"lastCheck",l:"Derniere verif."},{k:"nextCheck",l:"Prochaine verif.",e:true},{k:"status",l:"Statut",b:true}],
   f:function(){return[{k:"ref",l:"Reference"},{k:"type",l:"Type",o:["Extincteur CO2 2kg","Extincteur CO2 5kg","Extincteur Poudre 6kg","Extincteur Poudre 9kg","Extincteur Eau 9L","RIA","Detecteur fumee","Alarme","Porte coupe-feu","Autre"]},{k:"location",l:"Emplacement"},{k:"site",l:"Site",o:siteOpts()},{k:"lastCheck",l:"Derniere verification",t:"date"},{k:"nextCheck",l:"Prochaine verification",t:"date"},{k:"technician",l:"Technicien"},{k:"status",l:"Statut",o:["OK","NON CONFORME","PARTIEL","EN ATTENTE"]},{k:"notes",l:"Notes",ta:true}];}},
 vehicles:{l:"Vehicules et Conducteurs",i:"vehicle",
-  c:[{k:"ref",l:"Ref."},{k:"plate",l:"Immatriculation"},{k:"model",l:"Vehicule"},{k:"driver",l:"Conducteur"},{k:"site",l:"Site"},{k:"licenseExpiry",l:"Permis",e:true},{k:"insuranceExpiry",l:"Assurance",e:true},{k:"technicalExpiry",l:"Visite tech.",e:true},{k:"oilChangeExpiry",l:"Vidange",e:true},{k:"status",l:"Statut",b:true}],
-  f:function(){return[{k:"plate",l:"N Immatriculation"},{k:"model",l:"Marque et modele"},{k:"year",l:"Annee"},{k:"fuel",l:"Carburant",o:["Essence","Diesel","Electrique","Hybride","GPL"]},{k:"driver",l:"Conducteur",o:empOpts()},{k:"site",l:"Site",o:siteOpts()},{k:"mileage",l:"Kilometrage",t:"number"},{k:"licenseExpiry",l:"Expiry Permis",t:"date"},{k:"licenseCategory",l:"Categorie permis"},{k:"insuranceExpiry",l:"Expiry Assurance",t:"date"},{k:"insuranceCompany",l:"Assureur"},{k:"transportCardExpiry",l:"Expiry Carte transport",t:"date"},{k:"parkingCardExpiry",l:"Expiry Stationnement",t:"date"},{k:"technicalExpiry",l:"Expiry Visite technique",t:"date"},{k:"oilChangeExpiry",l:"Expiry Vidange",t:"date"},{k:"status",l:"Statut",o:["ACTIVE","EN PANNE","MAINTENANCE","IMMOBILISE","CEDE"]},{k:"notes",l:"Notes",ta:true}];}},
+  c:[{k:"ref",l:"Ref."},{k:"plate",l:"Immatriculation"},{k:"model",l:"Vehicule"},{k:"driver",l:"Conducteur"},{k:"site",l:"Site"},{k:"licenseExpiry",l:"Permis",e:true},{k:"insuranceExpiry",l:"Assurance",e:true},{k:"technicalExpiry",l:"Visite tech.",e:true},{k:"oilChangeExpiry",l:"Vidange date",e:true},{k:"lastOilKm",l:"Vidange (km)"},{k:"nextOilKm",l:"Proch. vidange (km)"},{k:"status",l:"Statut",b:true}],
+  f:function(){return[{k:"plate",l:"N Immatriculation"},{k:"model",l:"Marque et modele"},{k:"year",l:"Annee"},{k:"fuel",l:"Carburant",o:["Essence","Diesel","Electrique","Hybride","GPL"]},{k:"driver",l:"Conducteur",o:empOpts()},{k:"site",l:"Site",o:siteOpts()},{k:"mileage",l:"Kilometrage",t:"number"},{k:"licenseExpiry",l:"Expiry Permis",t:"date"},{k:"licenseCategory",l:"Categorie permis"},{k:"insuranceExpiry",l:"Expiry Assurance",t:"date"},{k:"insuranceCompany",l:"Assureur"},{k:"transportCardExpiry",l:"Expiry Carte transport",t:"date"},{k:"parkingCardExpiry",l:"Expiry Stationnement",t:"date"},{k:"technicalExpiry",l:"Expiry Visite technique",t:"date"},{k:"oilChangeExpiry",l:"Prochaine vidange (date)",t:"date"},{k:"mileage",l:"Kilometrage actuel",t:"number"},{k:"lastOilKm",l:"Derniere vidange (km)",t:"number"},{k:"oilInterval",l:"Intervalle vidange (km) ex: 5000",t:"number"},{k:"nextOilKm",l:"Prochaine vidange (km) - calcule auto",t:"number"},{k:"oilBrand",l:"Huile utilisee (marque/grade)"},{k:"status",l:"Statut",o:["ACTIVE","EN PANNE","MAINTENANCE","IMMOBILISE","CEDE"]},{k:"notes",l:"Notes",ta:true}];}},
 employees:{l:"Employes",i:"employee",
   c:[{k:"ref",l:"Ref."},{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site"},{k:"bloodGroup",l:"Gr. sanguin"},{k:"shirtSize",l:"Taille"},{k:"shoeSize",l:"Pointure"},{k:"nextMedical",l:"Prochaine visite",e:true},{k:"status",l:"Statut",b:true}],
   f:function(){return[{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site",o:siteOpts()},{k:"phone",l:"Telephone"},{k:"email",l:"Email",t:"email"},{k:"hireDate",l:"Date embauche",t:"date"},{k:"contractType",l:"Contrat",o:["CDI","CDD","Interimaire","Stagiaire","Sous-traitant"]},{k:"emergencyContact",l:"Contact urgence"},{k:"emergencyPhone",l:"Tel urgence"},{k:"bloodGroup",l:"Groupe sanguin",o:["A+","A-","B+","B-","AB+","AB-","O+","O-"]},
@@ -1953,6 +1953,15 @@ function filterCRUD(q) {
           var v = row[col.k];
           if (col.b) return "<td>"+bdg(v||"")+"</td>";
           if (col.e) return "<td>"+ebdg(v)+"</td>";
+          if (col.k === "nextOilKm" && mk === "vehicles") {
+            var curKm2 = parseInt(row.mileage||0)||0;
+            var nextKm2 = parseInt(v||0)||0;
+            if (nextKm2 > 0 && curKm2 > 0) {
+              var diff = nextKm2 - curKm2;
+              var c3 = diff < 0 ? "#ef4444" : diff < 1000 ? "#f59e0b" : "#22c55e";
+              return "<td><span style=\"color:"+c3+";font-weight:700;\">"+(v||"--")+" km"+(diff<0?" (DEPASSEE)":diff<1000?" (-"+diff+"km)":"")+"</span></td>";
+            }
+          }
           return '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+xe(v==null?"--":String(v))+"</td>";
         }).join("");
         return '<tr style="'+bg+'">'+tds
@@ -2172,7 +2181,8 @@ async function oCreate(mk) {
   S._saveAction=saveMod;
   document.getElementById("mmsg").style.display="none";
   document.getElementById("mbtns").style.display="flex";
-  bldMF(mk,{});showMod();
+  bldMF(mk,{});
+  wireOilCalc();showMod();
 }
 async function oEdit(mk,id) {
   var rows=await gRecs(mk);
@@ -2183,7 +2193,8 @@ async function oEdit(mk,id) {
   S._saveAction=saveMod;
   document.getElementById("mmsg").style.display="none";
   document.getElementById("mbtns").style.display="flex";
-  bldMF(mk,row);showMod();
+  bldMF(mk,row);
+  wireOilCalc();showMod();
 }
 function bldMF(mk,data) {
   var def=M[mk];var fs=typeof def.f==="function"?def.f():def.f;
@@ -4691,7 +4702,7 @@ var VIEW_CONFIG={
     {title:"Identification",fields:[{k:"plate",l:"Immatriculation"},{k:"model",l:"Modele"},{k:"brand",l:"Marque"},{k:"year",l:"Annee"},{k:"type",l:"Type"},{k:"fuel",l:"Carburant"},{k:"site",l:"Site"},{k:"status",l:"Statut",badge:true}]},
     {title:"Conducteur",fields:[{k:"driver",l:"Conducteur"},{k:"driverPhone",l:"Tel"},{k:"driverLicense",l:"N permis"}]},
     {title:"Documents",fields:[{k:"licenseExpiry",l:"Carte grise",expiry:true},{k:"insuranceExpiry",l:"Assurance",expiry:true},{k:"technicalExpiry",l:"Visite technique",expiry:true},{k:"transportCardExpiry",l:"Carte transport",expiry:true},{k:"oilChangeExpiry",l:"Vidange",expiry:true}]},
-    {title:"Entretien",fields:[{k:"lastService",l:"Dernier entretien"},{k:"mileage",l:"Kilometrage"},{k:"notes",l:"Notes",long:true}]}
+    {title:"Entretien",fields:[{k:"mileage",l:"Kilometrage actuel (km)"},{k:"lastOilKm",l:"Derniere vidange (km)"},{k:"oilInterval",l:"Intervalle vidange (km)"},{k:"nextOilKm",l:"Prochaine vidange (km)"},{k:"oilBrand",l:"Huile utilisee"},{k:"lastService",l:"Dernier entretien"},{k:"oilChangeExpiry",l:"Prochaine vidange (date)",expiry:true},{k:"notes",l:"Notes",long:true}]}
   ]},
   employees:{icon:"employee",color:"#4f6ef7",title:function(r){return r.fullName||"Employe";},sections:[
     {title:"Identite",fields:[{k:"ref",l:"Ref"},{k:"fullName",l:"Nom complet"},{k:"position",l:"Poste"},{k:"department",l:"Departement"},{k:"site",l:"Site"},{k:"contractType",l:"Contrat"},{k:"hireDate",l:"Embauche"},{k:"status",l:"Statut",badge:true}]},
@@ -4787,6 +4798,58 @@ async function oView(mk,id){
     +(r.status?'<div style="margin-left:auto">'+bdg(r.status)+'</div>':'')
     +'</div>'+sectHTML+'</div>';
   showMod();
+}
+
+
+
+function wireOilCalc() {
+  // Only for vehicles module - add auto-calc listeners
+  if (S.pg !== "vehicles" && S.mkey !== "vehicles") return;
+  ["lastOilKm","oilInterval","mileage"].forEach(function(k) {
+    var el = document.getElementById("f-"+k);
+    if (el) el.addEventListener("input", function() {
+      var lastKm = parseInt((document.getElementById("f-lastOilKm")||{}).value||0) || 0;
+      var interval = parseInt((document.getElementById("f-oilInterval")||{}).value||0) || 0;
+      var nextEl = document.getElementById("f-nextOilKm");
+      if (lastKm > 0 && interval > 0 && nextEl) {
+        var next = lastKm + interval;
+        nextEl.value = next;
+        nextEl.style.color = "#22c55e";
+        nextEl.style.fontWeight = "700";
+        var mileEl = document.getElementById("f-mileage");
+        var curKm = parseInt((mileEl||{}).value||0) || 0;
+        if (curKm > 0 && next > curKm) {
+          var kmLeft = next - curKm;
+          // Update label
+          var lbl = nextEl.parentNode ? nextEl.parentNode.querySelector("label") : null;
+          if (lbl) lbl.innerHTML = "Prochaine vidange (km) — "
+            + '<span style="color:#22c55e;font-weight:700">encore ' + kmLeft.toLocaleString() + ' km</span>';
+        }
+      }
+    });
+  });
+}
+
+// ── Calcul auto vidange km (appele depuis les champs vehicule) ────
+function calcNextOilKm() {
+  var lastKm = parseInt(document.getElementById("f-lastOilKm") ? document.getElementById("f-lastOilKm").value : 0) || 0;
+  var interval = parseInt(document.getElementById("f-oilInterval") ? document.getElementById("f-oilInterval").value : 0) || 0;
+  if (lastKm > 0 && interval > 0) {
+    var next = lastKm + interval;
+    var nextEl = document.getElementById("f-nextOilKm");
+    if (nextEl) {
+      nextEl.value = next;
+      nextEl.style.color = "#22c55e";
+      nextEl.style.fontWeight = "700";
+    }
+    // Also estimate date (rough: 10000km/year = 5000km/6months)
+    var mileEl = document.getElementById("f-mileage");
+    var curKm = parseInt(mileEl ? mileEl.value : 0) || 0;
+    if (curKm > 0 && next > curKm) {
+      var kmLeft = next - curKm;
+      toast("Prochaine vidange dans ~" + kmLeft.toLocaleString() + " km");
+    }
+  }
 }
 
 // ================================================================
