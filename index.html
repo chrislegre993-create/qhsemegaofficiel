@@ -4803,31 +4803,113 @@ async function oView(mk,id){
 
 
 function wireOilCalc() {
-  // Only for vehicles module - add auto-calc listeners
-  if (S.pg !== "vehicles" && S.mkey !== "vehicles") return;
-  ["lastOilKm","oilInterval","mileage"].forEach(function(k) {
-    var el = document.getElementById("f-"+k);
-    if (el) el.addEventListener("input", function() {
-      var lastKm = parseInt((document.getElementById("f-lastOilKm")||{}).value||0) || 0;
-      var interval = parseInt((document.getElementById("f-oilInterval")||{}).value||0) || 0;
-      var nextEl = document.getElementById("f-nextOilKm");
-      if (lastKm > 0 && interval > 0 && nextEl) {
-        var next = lastKm + interval;
-        nextEl.value = next;
-        nextEl.style.color = "#22c55e";
-        nextEl.style.fontWeight = "700";
-        var mileEl = document.getElementById("f-mileage");
-        var curKm = parseInt((mileEl||{}).value||0) || 0;
-        if (curKm > 0 && next > curKm) {
-          var kmLeft = next - curKm;
-          // Update label
-          var lbl = nextEl.parentNode ? nextEl.parentNode.querySelector("label") : null;
-          if (lbl) lbl.innerHTML = "Prochaine vidange (km) — "
-            + '<span style="color:#22c55e;font-weight:700">encore ' + kmLeft.toLocaleString() + ' km</span>';
+  // Uses data-k attributes (how bldMF generates fields)
+  if (S.pg !== "vehicles") return;
+
+  function getField(k) {
+    return document.querySelector('[data-k="' + k + '"]');
+  }
+
+  function updateOilCalc() {
+    var lastKmEl   = getField("lastOilKm");
+    var intervalEl = getField("oilInterval");
+    var mileageEl  = getField("mileage");
+    var nextKmEl   = getField("nextOilKm");
+
+    var lastKm   = parseInt((lastKmEl   && lastKmEl.value)   || 0) || 0;
+    var interval = parseInt((intervalEl && intervalEl.value) || 0) || 0;
+    var curKm    = parseInt((mileageEl  && mileageEl.value)  || 0) || 0;
+
+    if (!nextKmEl) return;
+
+    if (lastKm > 0 && interval > 0) {
+      var nextKm = lastKm + interval;
+      nextKmEl.value = nextKm;
+
+      // Color the nextOilKm field based on status
+      var remaining = nextKm - curKm;
+      var statusColor, statusText, nextLabel;
+
+      if (curKm <= 0) {
+        statusColor = "#6b6f96";
+        statusText  = "Saisissez le kilométrage actuel";
+        nextLabel   = "Prochaine vidange (km)";
+      } else if (remaining < 0) {
+        statusColor = "#ef4444";
+        statusText  = "⚠ VIDANGE DÉPASSÉE de " + Math.abs(remaining).toLocaleString() + " km !";
+        nextLabel   = "Prochaine vidange (km) — <span style='color:#ef4444;font-weight:700'>DÉPASSÉE</span>";
+      } else if (remaining <= 500) {
+        statusColor = "#ef4444";
+        statusText  = "🔴 Urgence — seulement " + remaining.toLocaleString() + " km restant(s)";
+        nextLabel   = "Prochaine vidange (km) — <span style='color:#ef4444;font-weight:700'>Urgent (" + remaining.toLocaleString() + " km)</span>";
+      } else if (remaining <= 1500) {
+        statusColor = "#f59e0b";
+        statusText  = "🟡 Bientôt — " + remaining.toLocaleString() + " km restant(s)";
+        nextLabel   = "Prochaine vidange (km) — <span style='color:#f59e0b;font-weight:700'>" + remaining.toLocaleString() + " km restant(s)</span>";
+      } else {
+        statusColor = "#22c55e";
+        statusText  = "✅ OK — " + remaining.toLocaleString() + " km restant(s)";
+        nextLabel   = "Prochaine vidange (km) — <span style='color:#22c55e;font-weight:700'>" + remaining.toLocaleString() + " km restant(s)</span>";
+      }
+
+      // Style nextKmEl
+      nextKmEl.style.color = statusColor;
+      nextKmEl.style.fontWeight = "700";
+
+      // Update label of nextOilKm field
+      var nextParent = nextKmEl.closest(".f") || nextKmEl.parentNode;
+      if (nextParent) {
+        var lbl = nextParent.querySelector("label");
+        if (lbl) lbl.innerHTML = nextLabel;
+      }
+
+      // Update or create status panel
+      var panel = document.getElementById("oil-status-panel");
+      if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "oil-status-panel";
+        panel.style.cssText = "grid-column:1/-1;border-radius:10px;padding:14px 16px;margin-top:4px;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600;transition:all .3s ease";
+        // Insert after nextOilKm field
+        if (nextParent && nextParent.parentNode) {
+          nextParent.parentNode.insertBefore(panel, nextParent.nextSibling);
         }
       }
-    });
+      panel.style.background = statusColor + "15";
+      panel.style.border = "1px solid " + statusColor + "40";
+      panel.style.color  = statusColor;
+
+      var pct = curKm > 0 ? Math.min(100, Math.round((curKm - lastKm) / interval * 100)) : 0;
+      panel.innerHTML =
+        '<div style="flex-shrink:0;font-size:22px">'+(remaining<0?"⛽":"🚗")+'</div>'
+        +'<div style="flex:1">'
+        +'<p style="margin:0;font-size:13px;font-weight:700;color:'+statusColor+'">'+statusText+'</p>'
+        +(curKm>0&&lastKm>0?'<p style="margin:2px 0 0;font-size:11px;color:#6b6f96">Depuis dernière vidange: '+(curKm-lastKm).toLocaleString()+' km parcourus sur '+interval.toLocaleString()+' km</p>':'')
+        +(curKm>0&&lastKm>0?'<div style="height:8px;background:#232640;border-radius:4px;margin-top:6px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,pct)+'%;background:'+statusColor+';border-radius:4px;transition:width .5s ease"></div></div>':'')
+        +'</div>'
+        +'<div style="text-align:right;flex-shrink:0">'
+        +'<p style="margin:0;font-size:20px;font-weight:900;color:'+statusColor+'">'+(nextKm>0?nextKm.toLocaleString():"--")+'</p>'
+        +'<p style="margin:0;font-size:10px;color:#6b6f96">prochaine vidange (km)</p>'
+        +'</div>';
+
+    } else {
+      nextKmEl.value = "";
+      nextKmEl.style.color = "";
+      var pnl2 = document.getElementById("oil-status-panel");
+      if (pnl2) pnl2.remove();
+    }
+  }
+
+  // Wire listeners to all relevant fields
+  ["lastOilKm","oilInterval","mileage"].forEach(function(k) {
+    var el = getField(k);
+    if (el) {
+      el.removeEventListener("input", updateOilCalc);
+      el.addEventListener("input", updateOilCalc);
+    }
   });
+
+  // Run immediately if values already present (edit mode)
+  setTimeout(updateOilCalc, 100);
 }
 
 // ── Calcul auto vidange km (appele depuis les champs vehicule) ────
