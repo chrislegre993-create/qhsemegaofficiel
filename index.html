@@ -335,6 +335,11 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
 
+-- Colonnes supplementaires profiles (executer dans Supabase SQL Editor):
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'viewer';
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
+
 -- IMPORTANT: Dans Supabase > Authentication > Settings
 -- Desactivez "Enable email confirmations" pour tester sans confirmation email
 -- Ou activez "Confirm email" seulement en production
@@ -1117,6 +1122,7 @@ var NAV = [
   {k:"sites",l:"Mes sites et Lieux",i:"site",g:"Configuration"},
   {k:"rapport",l:"Rapport Mensuel",i:"rapport",g:"Rapports"},
   {k:"outils",l:"Outils QHSE",i:"tools",g:"Rapports"},
+  {k:"admin",l:"Administration",i:"settings",g:"Configuration"},
   {k:"settings",l:"Parametres",i:"settings",g:"Configuration"},
 ];
 
@@ -1239,12 +1245,18 @@ async function startApp() {
   // Load user profile
   var p = uid ? await sbFrom("profiles","GET",null,"id=eq."+uid) : {data:null,error:null};
   if (p.data && p.data[0]) {
-    S.user.name = p.data[0].name || S.user.email;
+    S.user.name    = p.data[0].name    || S.user.email;
     S.user.company = p.data[0].company || "";
+    S.user.role    = p.data[0].role    || "viewer";
+    S.user.perms   = p.data[0].permissions ? JSON.parse(p.data[0].permissions||'{}') : {};
   } else {
-    S.user.name = S.user.email;
+    S.user.name    = S.user.email;
     S.user.company = "";
+    S.user.role    = "admin";  // First user is admin by default
+    S.user.perms   = {};
   }
+  // Log activity
+  logActivity("login", "Connexion utilisateur");
   document.getElementById("av").textContent = (S.user.name||"?").charAt(0).toUpperCase();
   if (S.user.company) document.getElementById("sco").textContent = S.user.company;
   S.sites = await gSites();
@@ -1252,6 +1264,23 @@ async function startApp() {
   document.getElementById("splash").style.display = "none";
   mkNav();
   applyLangToUI();
+  // Update last_seen
+  (function updateSeen(){
+    var cfg=getConfig(); if(!cfg||!getUID()) return;
+    fetch(cfg.url+"/rest/v1/profiles?id=eq."+getUID(),{
+      method:"PATCH",
+      headers:Object.assign(sbHeaders(),{"Prefer":"return=minimal"}),
+      body:JSON.stringify({last_seen:new Date().toISOString()})
+    });
+  })();
+  setInterval(function(){
+    var cfg=getConfig(); if(!cfg||!getUID()) return;
+    fetch(cfg.url+"/rest/v1/profiles?id=eq."+getUID(),{
+      method:"PATCH",
+      headers:Object.assign(sbHeaders(),{"Prefer":"return=minimal"}),
+      body:JSON.stringify({last_seen:new Date().toISOString()})
+    });
+  }, 5*60*1000);
   try {
     await goto("dashboard");
   } catch(e) {
@@ -2149,6 +2178,7 @@ async function goto(k) {
     else if(k==="docsImport") await pgDocsImport();
     else if(k==="analytics") await pgAnalytics();
     else if(k==="rapport") await pgRapport();
+    else if(k==="admin") await pgAdmin();
     else if(k==="outils") pgOutils();
     else if(k==="emptsizes") await pgEmpSizes();
     else if(k==="settings") pgSettings();
@@ -2175,6 +2205,7 @@ async function goto(k) {
 // MODAL CRUD (async)
 // ================================================================
 async function oCreate(mk) {
+  if (!canWrite(mk)) { toast("Acces refuse — votre role ne permet pas de creer ici.", true); return; }
   S.mkey=mk;S.eid=null;
   document.getElementById("mtit").textContent="Nouveau - "+M[mk].l;
   document.getElementById("msave").innerHTML=ic("check",13)+" Creer";
@@ -2262,7 +2293,19 @@ document.addEventListener("click",function(e){
   var act=btn.getAttribute("data-action");
   var id=btn.getAttribute("data-id");
   var mk=btn.getAttribute("data-mk")||S.pg;
-  if(act==="view"){oView(mk,id);}
+  if(act==="admin-role"){
+    openAdminRole(
+      btn.getAttribute("data-uid")||"",
+      btn.getAttribute("data-email")||"",
+      btn.getAttribute("data-name")||"",
+      btn.getAttribute("data-role")||"viewer",
+      btn.getAttribute("data-perms")||"{}"
+    );
+  }
+  else if(act==="admin-kick"){
+    adminKick(btn.getAttribute("data-uid")||"",btn.getAttribute("data-name")||"");
+  }
+  else if(act==="view"){oView(mk,id);}
   else if(act==="edit")oEdit(mk,id);
   else if(act==="del"){if(confirm(t("confirm_delete")))dRec(id).then(function(){toast("Supprime");pgCRUD(S.pg);});}
   else if(act==="create")oCreate(mk);
@@ -4933,6 +4976,394 @@ function calcNextOilKm() {
     }
   }
 }
+
+// ================================================================
+// ROLES & PERMISSIONS SYSTEM
+// ================================================================
+// Roles: admin > manager > editor > viewer
+// Permissions per module: read, write, delete
+
+var ROLES = {
+  admin:   {label:"Administrateur", color:"#ef4444", icon:"★", level:4},
+  manager: {label:"Manager QHSE",   color:"#f59e0b", icon:"◆", level:3},
+  editor:  {label:"Editeur",        color:"#4f6ef7", icon:"✎", level:2},
+  viewer:  {label:"Lecteur",        color:"#22c55e", icon:"◉", level:1}
+};
+
+var DEFAULT_PERMS = {
+  admin:   {read:true, write:true,  delete:true,  modules:"all"},
+  manager: {read:true, write:true,  delete:false, modules:"all"},
+  editor:  {read:true, write:true,  delete:false, modules:"incidents,audits,nc,actions,ppe,fire,vehicles,meetings,training,environment,employees,risks"},
+  viewer:  {read:true, write:false, delete:false, modules:"all"}
+};
+
+function isAdmin() { return S.user && S.user.role === "admin"; }
+function isManager() { return S.user && (S.user.role === "admin" || S.user.role === "manager"); }
+
+function canWrite(mk) {
+  if (!S.user) return false;
+  if (S.user.role === "admin") return true;
+  var dp = DEFAULT_PERMS[S.user.role || "viewer"] || DEFAULT_PERMS.viewer;
+  if (!dp.write) return false;
+  // Check custom permissions first
+  if (S.user.perms && S.user.perms[mk] !== undefined) return !!S.user.perms[mk].write;
+  // Check module list
+  if (dp.modules === "all") return true;
+  return dp.modules.split(",").indexOf(mk) >= 0;
+}
+
+function canDelete(mk) {
+  if (!S.user) return false;
+  if (S.user.role === "admin") return true;
+  var dp = DEFAULT_PERMS[S.user.role || "viewer"] || DEFAULT_PERMS.viewer;
+  return !!dp.delete;
+}
+
+// Log activity to Supabase
+async function logActivity(action, detail) {
+  if (!getUID()) return;
+  await sRec("activity_log", {
+    userId:    getUID(),
+    userName:  S.user ? (S.user.name || S.user.email || "") : "",
+    userEmail: S.user ? (S.user.email || "") : "",
+    userRole:  S.user ? (S.user.role || "viewer") : "viewer",
+    action:    action,
+    detail:    String(detail || "").substring(0, 200),
+    module:    S.pg || "",
+    ts:        new Date().toISOString()
+  }, null);
+}
+
+
+
+// ================================================================
+// ADMINISTRATION - Gestion utilisateurs, rôles, activités
+// ================================================================
+async function pgAdmin() {
+  if (!isAdmin()) {
+    put('<div style="padding:40px;text-align:center"><p style="color:#ef4444;font-size:16px;font-weight:700">⛔ Accès réservé aux administrateurs</p></div>');
+    return;
+  }
+  put('<div style="padding:32px;text-align:center"><div class="spn" style="margin:0 auto"></div><p style="color:#6b6f96;margin-top:12px">Chargement administration...</p></div>');
+
+  // Load all profiles + activity log
+  var allUsers = await sbFrom("profiles","GET",null,"select=*&order=created_at.desc");
+  var users = (allUsers.data || []);
+  var actLog = await gRecs("activity_log");
+  var recentAct = actLog.sort(function(a,b){return (b.ts||'').localeCompare(a.ts||'');}).slice(0,50);
+
+  // Stats
+  var totalUsers = users.length;
+  var onlineUsers = users.filter(function(u){ return u.last_seen && (new Date() - new Date(u.last_seen)) < 30*60*1000; }).length;
+  var byRole = {};
+  users.forEach(function(u){ byRole[u.role||'viewer'] = (byRole[u.role||'viewer']||0)+1; });
+
+  // ── User table ────────────────────────────────────────────────
+  var usersHTML = users.length ? users.map(function(u) {
+    var role = u.role || "viewer";
+    var rc = ROLES[role] ? ROLES[role].color : "#6b6f96";
+    var rl = ROLES[role] ? ROLES[role].label : role;
+    var isOnline = u.last_seen && (new Date() - new Date(u.last_seen)) < 30*60*1000;
+    var isSelf = u.id === getUID();
+    return '<tr style="border-bottom:1px solid #232640">'
+      +'<td style="padding:10px 12px">'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="position:relative">'
+      +'<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,'+rc+','+rc+'88);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px">'
+      +xe((u.name||u.email||'?').charAt(0).toUpperCase())+'</div>'
+      +(isOnline?'<div style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#22c55e;border-radius:50%;border:2px solid #131620"></div>':'')
+      +'</div>'
+      +'<div><p style="margin:0;font-size:13px;font-weight:600">'+xe(u.name||'--')+(isSelf?' <span style="font-size:10px;color:#4f6ef7">(vous)</span>':'')+'</p>'
+      +'<p style="margin:0;font-size:11px;color:#6b6f96">'+xe(u.email||'--')+'</p></div></div></td>'
+      +'<td style="padding:10px 12px"><span style="background:'+rc+'22;color:'+rc+';border:1px solid '+rc+'44;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">'+rl+'</span></td>'
+      +'<td style="padding:10px 12px"><span style="font-size:11px;color:'+(isOnline?'#22c55e':'#6b6f96')+'">●&nbsp;'+(isOnline?'En ligne':'Hors ligne')+(u.last_seen?' ('+xe(u.last_seen.substring(0,16).replace('T',' '))+')':"")+'</span></td>'
+      +'<td style="padding:10px 12px;font-size:11px;color:#6b6f96">'+xe(u.company||'--')+'</td>'
+      +(isSelf?'<td style="padding:10px 12px"><span style="font-size:11px;color:#6b6f96">Votre compte</span></td>'
+        :'<td style="padding:10px 12px"><div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +'<button data-action="admin-role" data-uid="'+xe(String(u.id))+'" data-email="'+xe(u.email||'')+'" data-name="'+xe(u.name||'')+'" data-role="'+role+'" data-perms="'+xe(u.permissions||'{}')+'" style="background:#4f6ef718;border:1px solid #4f6ef730;border-radius:6px;padding:4px 10px;cursor:pointer;color:#4f6ef7;font-size:11px;font-family:inherit;font-weight:600">Rôle & Accès</button>'
+        +'<button data-action="admin-kick" data-uid="'+xe(String(u.id))+'" data-name="'+xe(u.name||u.email||'')+'" style="background:#ef444412;border:1px solid #ef444430;border-radius:6px;padding:4px 10px;cursor:pointer;color:#ef4444;font-size:11px;font-family:inherit">Révoquer</button>'
+        +'</div></td>')
+      +'</tr>';
+  }).join('') : '<tr><td colspan="5" style="padding:20px;text-align:center;color:#6b6f96">Aucun utilisateur</td></tr>';
+
+  // ── Activity log ─────────────────────────────────────────────
+  var actHTML = recentAct.length ? recentAct.map(function(a) {
+    var rc2 = ROLES[a.userRole] ? ROLES[a.userRole].color : "#6b6f96";
+    return '<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #232640;align-items:flex-start">'
+      +'<div style="width:28px;height:28px;border-radius:50%;background:'+rc2+'22;border:1px solid '+rc2+'44;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:'+rc2+';flex-shrink:0">'
+      +xe((a.userName||'?').charAt(0).toUpperCase())+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<p style="margin:0;font-size:12px"><b style="color:#e2e5f5">'+xe(a.userName||a.userEmail||'--')+'</b>'
+      +' <span style="color:#6b6f96">'+xe(a.action||'')+'</span>'
+      +(a.detail?' — <span style="color:#9ca3af;font-size:11px">'+xe(String(a.detail).substring(0,60))+'</span>':'')
+      +'</p>'
+      +'<p style="margin:0;font-size:10px;color:#6b6f96">'+(a.module?'['+a.module+'] ':'')+xe((a.ts||'').substring(0,16).replace('T',' '))+'</p>'
+      +'</div></div>';
+  }).join('') : '<p style="color:#6b6f96;font-size:12px">Aucune activité enregistrée</p>';
+
+  // ── KPI ──────────────────────────────────────────────────────
+  var kpiH = [
+    {l:"Utilisateurs",       v:totalUsers,               c:"#4f6ef7"},
+    {l:"En ligne",           v:onlineUsers,              c:"#22c55e"},
+    {l:"Administrateurs",    v:byRole['admin']||0,       c:"#ef4444"},
+    {l:"Managers",           v:byRole['manager']||0,     c:"#f59e0b"},
+    {l:"Editeurs",           v:byRole['editor']||0,      c:"#4f6ef7"},
+    {l:"Lecteurs",           v:byRole['viewer']||0,      c:"#6b7280"},
+  ].map(function(k){
+    return '<div class="kpi"><p style="font-size:10px;color:#6b6f96;text-transform:uppercase;font-weight:600;margin:0 0 4px">'+k.l+'</p><h2 style="font-size:24px;font-weight:900;margin:0;color:'+k.c+'">'+k.v+'</h2></div>';
+  }).join('');
+
+  put('<div class="fi">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:20px">'
+    +'<div><h1 style="font-size:19px;font-weight:800;margin:0">Administration</h1>'
+    +'<p style="color:#6b6f96;font-size:12px;margin:3px 0 0">Gestion utilisateurs · Rôles · Activités</p></div>'
+    +'<button onclick="inviteUser()" class="btn bp bsm">+ Inviter un utilisateur</button>'
+    +'</div>'
+    +'<div class="gkpi" style="margin-bottom:20px">'+kpiH+'</div>'
+
+    +'<div style="display:grid;grid-template-columns:1fr 340px;gap:14px">'
+
+    // Users table
+    +'<div><div class="card0">'
+    +'<div style="padding:12px 14px;border-bottom:1px solid #232640;display:flex;justify-content:space-between;align-items:center">'
+    +'<h3 style="font-size:13px;font-weight:700;margin:0">Utilisateurs ('+totalUsers+')</h3>'
+    +'<button onclick="pgAdmin()" style="background:none;border:none;color:#4f6ef7;cursor:pointer;font-size:12px;font-family:inherit">↻ Rafraîchir</button>'
+    +'</div>'
+    +'<div class="tw"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="background:#1a1d2b">'
+    +'<th style="padding:10px 12px;text-align:left;font-size:10px;color:#6b6f96;text-transform:uppercase">Utilisateur</th>'
+    +'<th style="padding:10px 12px;text-align:left;font-size:10px;color:#6b6f96;text-transform:uppercase">Rôle</th>'
+    +'<th style="padding:10px 12px;text-align:left;font-size:10px;color:#6b6f96;text-transform:uppercase">Statut</th>'
+    +'<th style="padding:10px 12px;text-align:left;font-size:10px;color:#6b6f96;text-transform:uppercase">Entreprise</th>'
+    +'<th style="padding:10px 12px;width:180px"></th>'
+    +'</tr></thead><tbody>'+usersHTML+'</tbody></table></div></div></div>'
+
+    // Activity log
+    +'<div><div class="card">'
+    +'<h3 style="font-size:13px;font-weight:700;margin:0 0 12px">Activité récente</h3>'
+    +actHTML
+    +'</div></div>'
+    +'</div>'
+    +'</div>');
+}
+
+// ── Invite user ───────────────────────────────────────────────────
+function inviteUser() {
+  document.getElementById("mtit").textContent = "Inviter un utilisateur";
+  S._saveAction = saveInviteUser;
+  var msave = document.getElementById("msave");
+  if(msave){msave.innerHTML=ic("check",13)+" Créer le compte";msave.style.display="";msave.disabled=false;}
+  var mcancel = document.getElementById("mcancel");
+  if(mcancel){mcancel.textContent="Annuler";mcancel.style.display="";}
+  document.getElementById("mmsg").style.display="none";
+
+  document.getElementById("mflds").innerHTML =
+    '<div style="grid-column:1/-1">'
+    +'<div style="background:#4f6ef712;border:1px solid #4f6ef730;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#6b6f96">'
+    +'<strong style="color:#4f6ef7">Note:</strong> L\'utilisateur recevra un email d\'invitation Supabase pour créer son mot de passe. Assurez-vous que l\'email est correct.'
+    +'</div>'
+    +'<div class="g2">'
+    +'<div class="f"><label>Email *</label><input id="inv-email" type="email" placeholder="prenom.nom@entreprise.com"/></div>'
+    +'<div class="f"><label>Nom complet</label><input id="inv-name" type="text" placeholder="Ex: Konan Jean"/></div>'
+    +'<div class="f"><label>Entreprise</label><input id="inv-company" type="text" value="'+xe(S.user.company||'')+'"/></div>'
+    +'<div class="f"><label>Rôle *</label>'
+    +'<select id="inv-role">'
+    +Object.keys(ROLES).map(function(k){ return '<option value="'+k+'">'+ROLES[k].label+'</option>'; }).join('')
+    +'</select></div>'
+    +'</div>'
+    +'<div style="background:#1a1d2b;border-radius:10px;padding:14px;margin-top:8px">'
+    +'<p style="margin:0 0 10px;font-size:12px;font-weight:700;color:#e2e5f5">Permissions par module</p>'
+    +'<p style="margin:0 0 10px;font-size:11px;color:#6b6f96">Les permissions par défaut s\'appliquent selon le rôle. Vous pouvez les personnaliser ici.</p>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px" id="inv-perms">'
+    +['incidents','audits','risks','nc','actions','ppe','vehicles','employees','training','environment','fire','meetings'].map(function(mk){
+      var ml = ({incidents:"Incidents",audits:"Audits",risks:"Risques",nc:"NC",actions:"Actions",ppe:"EPI",vehicles:"Vehicules",employees:"Employes",training:"Formations",environment:"Environnement",fire:"Incendie",meetings:"Reunions"})[mk]||mk;
+      return '<label style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#131620;border-radius:6px;cursor:pointer;font-size:11px;color:#e2e5f5">'
+        +'<input type="checkbox" class="perm-chk" data-mk="'+mk+'" checked style="accent-color:#4f6ef7"/>'+ml+'</label>';
+    }).join('')
+    +'</div></div>'
+    +'</div>';
+  showMod();
+}
+
+async function saveInviteUser() {
+  var msg = document.getElementById("mmsg");
+  var email = document.getElementById("inv-email").value.trim();
+  var name = document.getElementById("inv-name").value.trim();
+  var company = document.getElementById("inv-company").value.trim();
+  var role = document.getElementById("inv-role").value;
+  if (!email) { msg.className="aerr"; msg.textContent="Email requis."; msg.style.display="block"; return; }
+
+  var btn = document.getElementById("msave");
+  btn.disabled=true; btn.textContent="Création...";
+
+  // Gather permissions
+  var perms = {};
+  document.querySelectorAll(".perm-chk").forEach(function(chk) {
+    perms[chk.getAttribute("data-mk")] = {read:true, write:chk.checked, delete:false};
+  });
+
+  // Create user via Supabase admin API (invite)
+  var cfg = getConfig();
+  var inviteRes = await fetch(cfg.url+"/auth/v1/admin/users", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","apikey":cfg.key,"Authorization":"Bearer "+cfg.key},
+    body:JSON.stringify({email:email,email_confirm:true,user_metadata:{name:name,company:company}})
+  }).then(function(r){return r.json();}).catch(function(){return {error:"Erreur reseau"};});
+
+  if (inviteRes.error && inviteRes.error.message) {
+    btn.disabled=false; btn.innerHTML=ic("check",13)+" Créer le compte";
+    msg.className="aerr"; msg.textContent="Erreur: "+inviteRes.error.message; msg.style.display="block";
+    return;
+  }
+
+  var newUserId = inviteRes.id || (inviteRes.user && inviteRes.user.id);
+  if (newUserId) {
+    // Create/update profile with role and permissions
+    await fetch(cfg.url+"/rest/v1/profiles", {
+      method:"POST",
+      headers:Object.assign(sbHeaders(), {"Prefer":"resolution=merge-duplicates"}),
+      body:JSON.stringify({id:newUserId,email:email,name:name,company:company,role:role,permissions:JSON.stringify(perms)})
+    });
+    await logActivity("invite_user","Invitation de "+email+" ("+ROLES[role].label+")");
+    closeMod();
+    toast("Compte créé pour "+email+" — Rôle: "+ROLES[role].label);
+    await pgAdmin();
+  } else {
+    btn.disabled=false; btn.innerHTML=ic("check",13)+" Créer le compte";
+    msg.className="aerr"; msg.textContent="Réponse inattendue du serveur"; msg.style.display="block";
+  }
+}
+
+// ── Edit user role & permissions ──────────────────────────────────
+function openAdminRole(uid, email, name, role, permsStr) {
+  document.getElementById("mtit").textContent = "Rôle & Accès — " + (name||email);
+  S._saveAction = function(){ saveAdminRole(uid, name||email); };
+  var msave = document.getElementById("msave");
+  if(msave){msave.innerHTML=ic("check",13)+" Enregistrer";msave.style.display="";msave.disabled=false;}
+  var mcancel = document.getElementById("mcancel");
+  if(mcancel){mcancel.textContent="Annuler";mcancel.style.display="";}
+  document.getElementById("mmsg").style.display="none";
+
+  var perms = {};
+  try { perms = JSON.parse(permsStr||'{}'); } catch(e){}
+
+  var modules = ['incidents','audits','risks','nc','actions','ppe','vehicles','employees','training','environment','fire','meetings'];
+  var dp = DEFAULT_PERMS[role] || DEFAULT_PERMS.viewer;
+  var modLabels = {incidents:"Incidents",audits:"Audits",risks:"Risques",nc:"NC",actions:"Actions",ppe:"EPI",vehicles:"Véhicules",employees:"Employés",training:"Formations",environment:"Environnement",fire:"Incendie",meetings:"Réunions"};
+
+  document.getElementById("mflds").innerHTML =
+    '<div style="grid-column:1/-1">'
+    +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 14px;background:#1a1d2b;border-radius:10px">'
+    +'<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c5cf6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff">'+xe((name||email||'?').charAt(0).toUpperCase())+'</div>'
+    +'<div><p style="margin:0;font-size:14px;font-weight:700">'+xe(name||'--')+'</p><p style="margin:0;font-size:12px;color:#6b6f96">'+xe(email)+'</p></div></div>'
+    +'<div class="f"><label>Rôle</label>'
+    +'<select id="ar-role" onchange="updateRolePermsPreview()">'
+    +Object.keys(ROLES).map(function(k){return '<option value="'+k+'"'+(k===role?' selected':'')+'>'+ROLES[k].label+'</option>';}).join('')
+    +'</select></div>'
+    +'<div style="background:#1a1d2b;border-radius:10px;padding:14px;margin-top:10px">'
+    +'<p style="margin:0 0 10px;font-size:12px;font-weight:700">Permissions par module</p>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="border-bottom:1px solid #232640">'
+    +'<th style="padding:6px 8px;text-align:left;color:#6b6f96;font-weight:600">Module</th>'
+    +'<th style="padding:6px 8px;text-align:center;color:#6b6f96;font-weight:600">Lecture</th>'
+    +'<th style="padding:6px 8px;text-align:center;color:#6b6f96;font-weight:600">Ecriture</th>'
+    +'<th style="padding:6px 8px;text-align:center;color:#6b6f96;font-weight:600">Suppression</th>'
+    +'</tr></thead><tbody>'
+    +modules.map(function(mk){
+      var customPerm = perms[mk] || {};
+      var defaultRead  = dp.modules==="all" || dp.modules.split(",").indexOf(mk)>=0;
+      var canW = customPerm.write !== undefined ? customPerm.write : dp.write && defaultRead;
+      var canD = customPerm.delete !== undefined ? customPerm.delete : dp.delete;
+      return '<tr style="border-bottom:1px solid #232640">'
+        +'<td style="padding:7px 8px;font-weight:600">'+xe(modLabels[mk]||mk)+'</td>'
+        +'<td style="text-align:center;padding:7px 8px"><input type="checkbox" class="perm-read" data-mk="'+mk+'" '+(defaultRead?'checked':'')+' style="accent-color:#22c55e;width:16px;height:16px"/></td>'
+        +'<td style="text-align:center;padding:7px 8px"><input type="checkbox" class="perm-write" data-mk="'+mk+'" '+(canW?'checked':'')+' style="accent-color:#4f6ef7;width:16px;height:16px"/></td>'
+        +'<td style="text-align:center;padding:7px 8px"><input type="checkbox" class="perm-del" data-mk="'+mk+'" '+(canD?'checked':'')+' style="accent-color:#ef4444;width:16px;height:16px"/></td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>'
+    +'<div id="role-preview" style="margin-top:10px"></div>'
+    +'</div>';
+  showMod();
+  updateRolePermsPreview();
+}
+
+function updateRolePermsPreview() {
+  var r = (document.getElementById("ar-role")||{}).value||"viewer";
+  var pr = document.getElementById("role-preview");
+  if(!pr) return;
+  var ri = ROLES[r]||ROLES.viewer;
+  pr.innerHTML='<div style="background:'+ri.color+'15;border:1px solid '+ri.color+'30;border-radius:8px;padding:10px 14px;font-size:12px">'
+    +'<span style="color:'+ri.color+';font-weight:700">'+ri.label+'</span> — '
+    +({admin:"Accès complet à tout. Peut créer/modifier/supprimer et gérer les utilisateurs.",
+       manager:"Peut lire et modifier tout. Ne peut pas supprimer.",
+       editor:"Peut lire et modifier les modules assignés.",
+       viewer:"Lecture seule. Ne peut rien modifier."}[r]||"")
+    +'</div>';
+}
+
+async function saveAdminRole(uid, label) {
+  var msg = document.getElementById("mmsg");
+  var role = document.getElementById("ar-role").value;
+  var btn  = document.getElementById("msave");
+  btn.disabled=true; btn.textContent="Enregistrement...";
+
+  // Collect permissions
+  var perms = {};
+  document.querySelectorAll(".perm-read").forEach(function(chk){
+    var mk=chk.getAttribute("data-mk");
+    if(!perms[mk]) perms[mk]={};
+    perms[mk].read=chk.checked;
+  });
+  document.querySelectorAll(".perm-write").forEach(function(chk){
+    var mk=chk.getAttribute("data-mk");
+    if(!perms[mk]) perms[mk]={};
+    perms[mk].write=chk.checked;
+  });
+  document.querySelectorAll(".perm-del").forEach(function(chk){
+    var mk=chk.getAttribute("data-mk");
+    if(!perms[mk]) perms[mk]={};
+    perms[mk].delete=chk.checked;
+  });
+
+  var cfg = getConfig();
+  var res = await fetch(cfg.url+"/rest/v1/profiles?id=eq."+uid, {
+    method:"PATCH",
+    headers:Object.assign(sbHeaders(),{"Prefer":"return=minimal"}),
+    body:JSON.stringify({role:role, permissions:JSON.stringify(perms)})
+  });
+
+  if(res.ok||res.status===204) {
+    await logActivity("change_role","Rôle de "+label+" → "+ROLES[role].label);
+    closeMod();
+    toast("Rôle de "+label+" mis à jour: "+ROLES[role].label);
+    await pgAdmin();
+  } else {
+    btn.disabled=false; btn.innerHTML=ic("check",13)+" Enregistrer";
+    msg.className="aerr"; msg.textContent="Erreur serveur "+res.status; msg.style.display="block";
+  }
+}
+
+async function adminKick(uid, name) {
+  if(!confirm("Révoquer l'accès de "+name+" ? Cette action désactivera son compte.")) return;
+  var cfg = getConfig();
+  // Disable user via Supabase admin API
+  var res = await fetch(cfg.url+"/auth/v1/admin/users/"+uid, {
+    method:"PUT",
+    headers:{"Content-Type":"application/json","apikey":cfg.key,"Authorization":"Bearer "+cfg.key},
+    body:JSON.stringify({ban_duration:"876000h"})
+  }).then(function(r){return r.json();});
+  // Update profile role to revoked
+  await fetch(cfg.url+"/rest/v1/profiles?id=eq."+uid, {
+    method:"PATCH",
+    headers:Object.assign(sbHeaders(),{"Prefer":"return=minimal"}),
+    body:JSON.stringify({role:"revoked"})
+  });
+  await logActivity("revoke_user","Révocation de "+name);
+  toast("Accès de "+name+" révoqué.");
+  await pgAdmin();
+}
+
 
 // ================================================================
 // UI HELPERS
